@@ -4,18 +4,14 @@ struct Point
 end
 
 function solve_plane(points::Vector{Point})::Vector{Float64}
-    anchor = points[1]
-    distance = Array{Float64}(undef, length(points) - 1, length(points))
-    for i in 2:length(points)
-        distance[i-1, :] = points[i].pos .- anchor.pos
-    end
+    distance = transpose(reduce(hcat,map((x) -> x.pos .- points[1].pos, points[2:end])))
     coefs = Array{Float64}(undef, length(points) + 1)
     for i in 1:length(points)
         unit_vector = zeros(length(points))
         unit_vector[i] = 1
         coefs[i] = det(vcat(distance, reshape(unit_vector, (1, size(unit_vector, 1)))))
     end
-    coefs[end] = dot(coefs[1:end-1], anchor.pos)
+    coefs[end] = -dot(coefs[1:end-1], points[1].pos)
     return coefs
 end
 
