@@ -6,11 +6,8 @@ end
 function solve_plane(points::Vector{Point})::Vector{Float64}
     distance = transpose(reduce(hcat,map((x) -> x.pos .- points[1].pos, points[2:end])))
     coefs = Array{Float64}(undef, length(points) + 1)
-    for i in 1:length(points)
-        unit_vector = zeros(length(points))
-        unit_vector[i] = 1
-        coefs[i] = det(vcat(distance, reshape(unit_vector, (1, size(unit_vector, 1)))))
-    end
+    unit_vectors = Matrix{Float64}(I, length(points), length(points))
+    coefs[1:end-1] = [det(vcat(distance, transpose(unit_vectors[:,i]))) for i in 1:length(points)]
     coefs[end] = -dot(coefs[1:end-1], points[1].pos)
     return coefs
 end
