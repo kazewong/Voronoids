@@ -31,7 +31,9 @@ end
 function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node::DelaunayTreeNode, tree::DelaunayTree)::Vector{Int}
     if current_node.id ∉ visited_ids && in_sphere(current_node, vertex)
         push!(visited_ids, current_node.id)
-        push!(output, current_node.id)
+        if !current_node.dead
+            push!(output, current_node.id)
+        end
         childrens = tree.nodes[tree.children_relation[current_node.id]]
         check_children= Vector{DelaunayTreeNode}()
         if length(childrens) > 0
@@ -49,9 +51,9 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
     end
 end
 
-# function insert_point(nodes::DelaunayTree, point::Vertex)
-
-# end
+function insert_point(nodes::DelaunayTree, point::Vertex)
+    killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, nodes.nodes[1], nodes)
+end
 
 test_points = initialize_vertex(100)
 delaunay_tree = initialize_tree(test_points)
