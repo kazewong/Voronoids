@@ -8,10 +8,7 @@ function initialize_vertex(n::Int)::Vector{Vertex}
 end
 
 struct Simplex
-    id::Int
     vertices::Vector{Vertex}
-    neighbors::Vector{Int}
-    orientation::Int
 end
 
 function across(simplex::Simplex)::Simplex
@@ -20,10 +17,15 @@ end
 function rotate_clockwise(simplex::Simplex)::Simplex
 end
 
+struct DelaunayTreeNode
+    id::Int
+    dead::Bool
+    vertices::Vector{Vertex}
+end
 
 struct DelaunayTree
-    children::Vector{DelaunayTree}
-    step_children::Vector{Vector{DelaunayTree}}
-    dead::Bool
-    simplex::Simplex
+    nodes::Vector{DelaunayTreeNode}
+    children_relation::Dict{Int, Vector{Int}}
+    step_children_relation::Dict{Int, Vector{Vector{Int}}}
+    neighbors_relation::Dict{Int, Vector{Int}}
 end
