@@ -76,7 +76,7 @@ function insert_point(tree::DelaunayTree, point::Vertex)
                 if length(facet) == 3
                     # Creating new node
                     new_id = length(tree.simplices) + 1
-                    new_node = DelaunayTreeNode(new_id, false, [new_id, facet...])
+                    new_node = DelaunayTreeNode(new_id, false, [point.id, facet...])
                     tree.simplices[new_id] = new_node
                     push!(new_node_id, new_node.id)
                     tree.children_relation[new_node.id] = Vector{Int}()
@@ -96,13 +96,23 @@ function insert_point(tree::DelaunayTree, point::Vertex)
             end
         end
     end
-    for new_id1 in new_node_id
-        for new_id2 in new_node_id
-            if new_id1 != new_id2
-                facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2])
-                if length(facet) == 3
+    println("new_node_id: ", new_node_id)
+    for i in 1:length(new_node_id)
+        for j in i+1:length(new_node_id)
+            new_id1 = new_node_id[i]
+            new_id2 = new_node_id[j]
+            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2])
+            if length(facet) == 3
+                println("facet: ", facet)
+                if haskey(tree.neighbors_relation, new_id1)
                     push!(tree.neighbors_relation[new_id1], new_id2)
+                else
+                    tree.neighbors_relation[new_id1] = [new_id2]
+                end
+                if haskey(tree.neighbors_relation, new_id2)
                     push!(tree.neighbors_relation[new_id2], new_id1)
+                else
+                    tree.neighbors_relation[new_id2] = [new_id1]
                 end
             end
         end
