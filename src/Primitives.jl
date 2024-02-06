@@ -12,11 +12,18 @@ struct Simplex
     vertices::Vector{Vertex}
     neighbors::Vector{Int}
     orientation::Int
-    boundary::Bool
 end
 
 function across(simplex::Simplex)::Simplex
 end
 
 function rotate_clockwise(simplex::Simplex)::Simplex
+end
+
+
+struct DelaunayTree
+    children::Vector{DelaunayTree}
+    step_children::Vector{Vector{DelaunayTree}}
+    dead::Bool
+    simplex::Simplex
 end
