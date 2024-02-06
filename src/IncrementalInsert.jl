@@ -40,15 +40,13 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
         end
         childrens = tree.children_relation[current_node_id]
         check_children = Vector{Int}()
-        if length(childrens) > 0
-            nodes = tree.simplices[reduce(vcat, childrens)]
-            check_children = map(x -> locate(visited_ids, output, vertex, x, tree), childrens)
+        for child_id in childrens
+            check_children = locate(visited_ids, output, vertex, child_id, tree)
         end
-        step_childrens = tree.step_children_relation[current_node_id]
+        step_childrens = collect(values(tree.step_children_relation[current_node_id]))
         check_step_children = Vector{Int}()
-        if length(step_childrens) > 0
-            nodes = tree.simplices[reduce(vcat, step_childrens)]
-            check_step_children = map(x -> locate(visited_ids, output, vertex, x, tree), step_childrens)
+        for step_children_id in step_childrens
+            check_step_children = locate(visited_ids, output, vertex, step_children_id, tree)
         end
         return vcat(output, check_children, check_step_children)
     else
@@ -96,7 +94,6 @@ function insert_point(tree::DelaunayTree, point::Vertex)
             end
         end
     end
-    println("new_node_id: ", new_node_id)
     for i in 1:length(new_node_id)
         for j in i+1:length(new_node_id)
             new_id1 = new_node_id[i]
@@ -122,5 +119,8 @@ end
 
 test_points = initialize_vertex(100)
 delaunay_tree = initialize_tree(test_points)
-println(locate(Vector{Int}(), Vector{Int}(), test_points[1], 1, delaunay_tree))
-insert_point(delaunay_tree, test_points[1])
+# println(locate(Vector{Int}(), Vector{Int}(), test_points[1], 1, delaunay_tree))
+for i in 1:10
+    println("i: ", i)
+    insert_point(delaunay_tree, test_points[i])
+end
