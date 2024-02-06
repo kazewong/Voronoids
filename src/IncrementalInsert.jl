@@ -35,20 +35,20 @@ end
 function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node_id::Int, tree::DelaunayTree)::Vector{Int}
     if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree)
         push!(visited_ids, current_node_id)
-        if !tree.simplices[current_node_id].dead
-            push!(output, current_node_id)
-        end
+        # if !tree.simplices[current_node_id].dead
+        push!(output, current_node_id)
+        # end
         childrens = tree.children_relation[current_node_id]
         check_children = Vector{Int}()
         for child_id in childrens
-            check_children = locate(visited_ids, output, vertex, child_id, tree)
+            locate(visited_ids, output, vertex, child_id, tree)
         end
         step_childrens = collect(values(tree.step_children_relation[current_node_id]))
         check_step_children = Vector{Int}()
         for step_children_id in step_childrens
-            check_step_children = locate(visited_ids, output, vertex, step_children_id, tree)
+            locate(visited_ids, output, vertex, step_children_id, tree)
         end
-        return vcat(output, check_children, check_step_children)
+        return output
     else
         return output
     end
@@ -79,6 +79,7 @@ function insert_point(tree::DelaunayTree, point::Vertex)
                     push!(new_node_id, new_node.id)
                     tree.children_relation[new_node.id] = Vector{Int}()
                     tree.step_children_relation[new_node.id] = Dict{Vector{Int}, Vector{Int}}()
+                    tree.neighbors_relation[new_node.id] = [neighbor_id]
 
                     # Updating parent relationship
                     push!(tree.children_relation[node_id],new_node.id)
@@ -89,7 +90,10 @@ function insert_point(tree::DelaunayTree, point::Vertex)
                     end
 
                     # Updating neighbor relationship for the neighbor of the killed node
-                    tree.neighbors_relation[neighbor_id][findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])] = new_node.id
+                    killed_node_id = findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])
+                    if killed_node_id != nothing
+                        tree.neighbors_relation[neighbor_id][findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])] = new_node.id
+                    end
                 end
             end
         end
@@ -101,16 +105,8 @@ function insert_point(tree::DelaunayTree, point::Vertex)
             facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2])
             if length(facet) == 3
                 println("facet: ", facet)
-                if haskey(tree.neighbors_relation, new_id1)
-                    push!(tree.neighbors_relation[new_id1], new_id2)
-                else
-                    tree.neighbors_relation[new_id1] = [new_id2]
-                end
-                if haskey(tree.neighbors_relation, new_id2)
-                    push!(tree.neighbors_relation[new_id2], new_id1)
-                else
-                    tree.neighbors_relation[new_id2] = [new_id1]
-                end
+                push!(tree.neighbors_relation[new_id1], new_id2)
+                push!(tree.neighbors_relation[new_id2], new_id1)
             end
         end
     end
@@ -120,7 +116,5 @@ end
 test_points = initialize_vertex(100)
 delaunay_tree = initialize_tree(test_points)
 # println(locate(Vector{Int}(), Vector{Int}(), test_points[1], 1, delaunay_tree))
-for i in 1:10
-    println("i: ", i)
-    insert_point(delaunay_tree, test_points[i])
-end
+insert_point(delaunay_tree, test_points[1])
+insert_point(delaunay_tree, test_points[2])
