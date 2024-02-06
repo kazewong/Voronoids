@@ -18,7 +18,19 @@ function in_sphere(simplex::Simplex, point::Vertex)::Bool
     return det(position) > 0
 end
 
-function find_simplex(points::Vertex, simplices::Vector{Simplex})
-    
+function replace_boundary(simplex1::Simplex, simplex2::Simplex, )
+
 end
 
+function insert_point(simplices::Vector{Simplex}, point::Vertex)
+    boundary_simplices = filter(x -> x.boundary, simplices)
+    for simplex in boundary_simplices
+        if in_sphere(simplex, point)
+            return
+        end
+    end
+    return
+end
+
+test_points = initialize_vertex(100)
+bounding_simplex = initial_bounding_simplex(test_points)

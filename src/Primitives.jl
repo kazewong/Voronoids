@@ -20,4 +20,3 @@ end
 
 function rotate_clockwise(simplex::Simplex)::Simplex
 end
-
