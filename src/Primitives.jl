@@ -14,9 +14,9 @@ mutable struct DelaunayTreeNode
 end
 
 struct DelaunayTree
-    vertices::Vector{Vertex}
-    simplices::Vector{DelaunayTreeNode}
+    vertices::Dict{Int,Vertex}
+    simplices::Dict{Int, DelaunayTreeNode}
     children_relation::Dict{Int,Vector{Int}}
-    step_children_relation::Dict{Int,Vector{Vector{Int}}}
+    step_children_relation::Dict{Int,Dict{Vector{Int},Vector{Int}}}
     neighbors_relation::Dict{Int,Vector{Int}}
 end
