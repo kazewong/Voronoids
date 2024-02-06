@@ -61,7 +61,7 @@ function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode)::V
     if length(common) == 3
         return common
     else
-        return ()
+        return []
     end
 end
 
@@ -83,11 +83,15 @@ function insert_point(tree::DelaunayTree, point::Vertex)
                     tree.step_children_relation[new_node.id] = Dict{Vector{Int}, Vector{Int}}()
 
                     # Updating parent relationship
-                    push!(tree.children_relation[node_id], new_node.id)
-                    push!(tree.step_children_relation[neighbor_id][facet], new_node.id)
+                    push!(tree.children_relation[node_id],new_node.id)
+                    if haskey(tree.step_children_relation[neighbor_id], facet)
+                        push!(tree.step_children_relation[neighbor_id][facet], new_node.id)
+                    else
+                        tree.step_children_relation[neighbor_id][facet] = [new_node.id]
+                    end
 
                     # Updating neighbor relationship for the neighbor of the killed node
-                    tree.neighbors_relation[neighbor_id][findall(x->x==node_id, tree.neighbors_relation[neighbor_id])] = new_node.id
+                    tree.neighbors_relation[neighbor_id][findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])] = new_node.id
                 end
             end
         end
