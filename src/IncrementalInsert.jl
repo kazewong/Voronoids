@@ -246,10 +246,26 @@ insert_point(tree, test_points[5], n_dims=2)
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
 for i in 2:length(tree.simplices)
-    if !tree.simplices[i].dead #&& all(tree.simplices[i].vertices.>0)
+    if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
         x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
         plot!(x, y, label="Points", size=(800, 800))
     end
 end
 
 scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
+
+function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
+    for i in keys(tree.simplices)
+        if !tree.simplices[i].dead
+            for j in keys(tree.vertices)
+                if j > 0
+                    if in_sphere(i, tree.vertices[j], tree, n_dims=n_dims) && j ∉ tree.simplices[i].vertices
+                        println("Error, point ", j, " is inside the circumcircle of simplex ", i)
+                    end
+                end
+            end
+        end
+    end
+end
+
+check_delaunay(tree, n_dims=2)
