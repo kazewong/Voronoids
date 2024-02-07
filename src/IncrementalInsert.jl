@@ -93,14 +93,14 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
         push!(output, current_node_id)
         childrens = tree.children_relation[current_node_id]
         for child_id in childrens
-            locate(visited_ids, output, vertex, child_id, tree)
+            locate(visited_ids, output, vertex, child_id, tree, n_dims=n_dims)
         end
         step_childrens = collect(values(tree.step_children_relation[current_node_id]))
         if length(step_childrens) > 0
             step_childrens = vcat(step_childrens...)
         end
         for step_children_id in step_childrens
-            locate(visited_ids, output, vertex, step_children_id, tree)
+            locate(visited_ids, output, vertex, step_children_id, tree, n_dims=n_dims)
         end
         return output
     else
@@ -187,11 +187,11 @@ end
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
-for i in 2:7#length(tree.simplices)
-    # if !tree.simplices[i].dead
+for i in 2:length(tree.simplices)
+    if !tree.simplices[i].dead
         x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
         plot!(x, y, label="Points", size=(800, 800))
-    # end
+    end
 end
 
 scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color="red")
