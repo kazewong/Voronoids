@@ -121,10 +121,13 @@ end
 test_points = initialize_vertex(100)
 tree = initialize_tree(test_points)
 # println(locate(Vector{Int}(), Vector{Int}(), test_points[1], 1, delaunay_tree))
-insert_point(tree, test_points[1])
-insert_point(tree, test_points[2])
+# insert_point(tree, test_points[1])
+# insert_point(tree, test_points[2])
 
-new_tree = deepcopy(tree)
+for i in 1:10
+    insert_point(tree, test_points[i])
+end
+# new_tree = deepcopy(tree)
 
 
 x,y,z = [], [], []
