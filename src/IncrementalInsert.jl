@@ -62,8 +62,8 @@ function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
     node = DelaunayTreeNode(1, false, [-6, -5, -4])
     unbounded_node = Vector{DelaunayTreeNode}()
     push!(unbounded_node, DelaunayTreeNode(2, false, [-3, -6, -5]))
-    push!(unbounded_node, DelaunayTreeNode(3, false, [-2, -6, -4]))
-    push!(unbounded_node, DelaunayTreeNode(4, false, [-1, -5, -4]))
+    push!(unbounded_node, DelaunayTreeNode(3, false, [-1, -6, -4]))
+    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -5, -4]))
     nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3])
     children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [])
     step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}())
@@ -71,18 +71,26 @@ function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
     return DelaunayTree(verticies, nodes, children_relation, step_children_relation, neighbors_relation)
 end
 
-function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree)::Bool
+function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
     position = reduce(hcat, map(x -> x.position, map(x->tree.vertices[x], tree.simplices[node_id].vertices))) .- point.position
     position = vcat(position, mapslices(norm, position, dims=1))
-    return det(position) > 1e-15
+    if n_dims == 3
+        return det(position) < 1e-15
+    elseif n_dims == 2
+        vertices = map(x->x.position, map(x->tree.vertices[x], tree.simplices[node_id].vertices))
+        sign_area = sign(vertices[1][1]*(vertices[2][2]-vertices[3][2]) + vertices[2][1]*(vertices[3][2]-vertices[1][2]) + vertices[3][1]*(vertices[1][2]-vertices[2][2]))
+        if sign_area > 0
+            return det(position) > 1e-15
+        else
+            return det(position) < -1e-15
+        end
+    end
 end
 
-function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node_id::Int, tree::DelaunayTree)::Vector{Int}
-    if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree)
+function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
+    if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree, n_dims=n_dims)
         push!(visited_ids, current_node_id)
-        # if !tree.simplices[current_node_id].dead
         push!(output, current_node_id)
-        # end
         childrens = tree.children_relation[current_node_id]
         for child_id in childrens
             locate(visited_ids, output, vertex, child_id, tree)
@@ -100,26 +108,29 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
     end
 end
 
-function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode; n_dim::Int = 3)::Vector{Int}
+function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode; n_dims::Int = 3)::Vector{Int}
     common = intersect(simplex1.vertices, simplex2.vertices)
-    if length(common) == n_dim
+    if length(common) == n_dims
         return common
     else
         return []
     end
 end
 
-function insert_point(tree::DelaunayTree, point::Vertex; n_dim::Int=3)
-    killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree)
+function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
+    killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
     println("killed_nodes: ", killed_nodes)
     new_node_id = Vector{Int}()
     for node_id in killed_nodes
         if !tree.simplices[node_id].dead
             tree.simplices[node_id].dead = true
             for neighbor_id in tree.neighbors_relation[node_id]
-                if !in_sphere(neighbor_id, point, tree)
-                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dim=n_dim)
-                    if length(facet) == n_dim
+                println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
+                if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
+                    print("neighbor_id: ", neighbor_id)
+                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
+                    println("facet: ", facet)
+                    if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
                         println("new_id: ", new_id)
@@ -154,7 +165,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dim::Int=3)
             new_id1 = new_node_id[i]
             new_id2 = new_node_id[j]
             facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2])
-            if length(facet) == n_dim
+            if length(facet) == n_dims
                 push!(tree.neighbors_relation[new_id1], new_id2)
                 push!(tree.neighbors_relation[new_id2], new_id1)
             end
@@ -166,9 +177,9 @@ end
 Random.seed!(1234)
 test_points = initialize_vertex(3, n_dims=2)
 tree = initialize_tree_2d(test_points)
-
+insert_point(tree, test_points[1], n_dims=2)
 for i in 1:3
-    insert_point(tree, test_points[i], n_dim=2)
+    insert_point(tree, test_points[i], n_dims=2)
 end
 # new_tree = deepcopy(tree)
 
