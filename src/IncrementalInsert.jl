@@ -5,6 +5,25 @@ using Plots
 plotlyjs()
 include("Primitives.jl")
 
+function plot_simplex_2d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
+    x, y = [], []
+    for vertex_id in [1,2,3,1]
+        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
+        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
+    end
+    return x, y
+end
+
+function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
+    x, y, z = [], [], []
+    for vertex_id in [1,2,3,1,4,3,2,4]
+        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
+        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
+        push!(z, vertices[simplex.vertices[vertex_id]].position[3])
+    end
+    return x, y, z
+end
+
 function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
     center, radius = boundingsphere(positions)
@@ -143,7 +162,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dim::Int=3)
     tree.vertices[point.id] = point
 end
 
-test_points = initialize_vertex(10, n_dims=2)
+test_points = initialize_vertex(3, n_dims=2)
 tree = initialize_tree_2d(test_points)
 
 for i in 1:3
@@ -151,28 +170,13 @@ for i in 1:3
 end
 # new_tree = deepcopy(tree)
 
-function plot_simplex_2d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
-    x, y = [], []
-    for vertex_id in [1,2,3,1]
-        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
-        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
-    end
-    return x, y
-end
+
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
-for i in 1:3
-    x,y = plot_simplex_2d(tree.simplices[i+1], tree.vertices)
+for i in 2:length(tree.simplices)
+    x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
     plot!(x, y, label="Points", size=(800, 800))
 end
+
 scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color="red")
-function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
-    x, y, z = [], [], []
-    for vertex_id in [1,2,3,1,4,3,2,4]
-        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
-        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
-        push!(z, vertices[simplex.vertices[vertex_id]].position[3])
-    end
-    return x, y, z
-end
