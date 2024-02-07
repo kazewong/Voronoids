@@ -25,6 +25,57 @@ function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
     return x, y, z
 end
 
+function circumcircle(node_id::Int, tree::DelaunayTree)
+    vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
+    x1, y1 = vertices[1]
+    x2, y2 = vertices[2]
+    x3, y3 = vertices[3]
+
+    # Midpoints of AB and BC
+    D = ((x1 + x2) / 2, (y1 + y2) / 2)
+    E = ((x2 + x3) / 2, (y2 + y3) / 2)
+
+    # Slopes of AB and BC
+    mAB = (y2 - y1) / (x2 - x1)
+    mBC = (y3 - y2) / (x3 - x2)
+
+    # Slopes of perpendicular bisectors
+    mD = -1 / mAB
+    mE = -1 / mBC
+
+    # Calculating the circumcenter (X, Y)
+    X = (mD * D[1] - mE * E[1] + E[2] - D[2]) / (mD - mE)
+    Y = mD * (X - D[1]) + D[2]
+
+    # Radius of the circumcircle
+    R = sqrt((X - x1)^2 + (Y - y1)^2)
+
+    return ((X, Y), R)
+end
+
+function circumsphere(node_id::Int, tree::DelaunayTree)
+    vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
+    # Convert vertices into Julia tuples if they're not already
+    x1, y1, z1 = vertices[1]
+    x2, y2, z2 = vertices[2]
+    x3, y3, z3 = vertices[3]
+    x4, y4, z4 = vertices[4]
+
+    # Matrix of quadratic form
+    M = [x2-x1 y2-y1 z2-z1 ((x2^2 - x1^2) + (y2^2 - y1^2) + (z2^2 - z1^2)) / 2;
+         x3-x1 y3-y1 z3-z1 ((x3^2 - x1^2) + (y3^2 - y1^2) + (z3^2 - z1^2)) / 2;
+         x4-x1 y4-y1 z4-z1 ((x4^2 - x1^2) + (y4^2 - y1^2) + (z4^2 - z1^2)) / 2]
+
+    # Solve the linear system
+    center = M \ [1; 1; 1] # Solves M * [X; Y; Z] = [1; 1; 1]
+
+    # Radius is the distance from the center to any vertex, here A is chosen
+    R = sqrt((center[1] - x1)^2 + (center[2] - y1)^2 + (center[3] - z1)^2)
+
+    return (center..., R) # Return the center coordinates and the radius
+end
+
+
 function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
     center, radius = boundingsphere(positions)
@@ -72,18 +123,25 @@ function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
 end
 
 function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
-    position = reduce(hcat, map(x -> x.position, map(x->tree.vertices[x], tree.simplices[node_id].vertices))) .- point.position
-    position = vcat(position, mapslices(norm, position, dims=1))
-    if n_dims == 3
-        return det(position) < 1e-15
-    elseif n_dims == 2
-        vertices = map(x->x.position, map(x->tree.vertices[x], tree.simplices[node_id].vertices))
-        sign_area = sign(vertices[1][1]*(vertices[2][2]-vertices[3][2]) + vertices[2][1]*(vertices[3][2]-vertices[1][2]) + vertices[3][1]*(vertices[1][2]-vertices[2][2]))
-        if sign_area > 0
-            return det(position) > 1e-15
-        else
-            return det(position) < -1e-15
-        end
+    # position = reduce(hcat, map(x -> x.position, map(x->tree.vertices[x], tree.simplices[node_id].vertices))) .- point.position
+    # position = vcat(position, mapslices(norm, position, dims=1))
+    # if n_dims == 3
+    #     return det(position) < 1e-15
+    # elseif n_dims == 2
+    #     vertices = map(x->x.position, map(x->tree.vertices[x], tree.simplices[node_id].vertices))
+    #     sign_area = sign(vertices[1][1]*(vertices[2][2]-vertices[3][2]) + vertices[2][1]*(vertices[3][2]-vertices[1][2]) + vertices[3][1]*(vertices[1][2]-vertices[2][2]))
+    #     if sign_area > 0
+    #         return det(position) > 1e-15
+    #     else
+    #         return det(position) < -1e-15
+    #     end
+    # end
+    if n_dims==3
+        center, radius = circumsphere(node_id, tree)
+        return norm(point.position .- center) < radius
+    elseif n_dims==2
+        center, radius = circumcircle(node_id, tree)
+        return norm(point.position .- center) < radius
     end
 end
 
@@ -175,19 +233,23 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
 end
 
 Random.seed!(123)
-test_points = initialize_vertex(3, n_dims=2)
+n = 5
+test_points = initialize_vertex(n, n_dims=2)
 tree = initialize_tree_2d(test_points)
+
 insert_point(tree, test_points[1], n_dims=2)
 insert_point(tree, test_points[2], n_dims=2)
 insert_point(tree, test_points[3], n_dims=2)
+insert_point(tree, test_points[4], n_dims=2)
+insert_point(tree, test_points[5], n_dims=2)
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
 for i in 2:length(tree.simplices)
-    if !tree.simplices[i].dead
+    if !tree.simplices[i].dead #&& all(tree.simplices[i].vertices.>0)
         x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
         plot!(x, y, label="Points", size=(800, 800))
     end
 end
 
-scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green"])
+scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
