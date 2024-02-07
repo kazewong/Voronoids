@@ -5,7 +5,7 @@ using Plots
 plotlyjs()
 include("Primitives.jl")
 
-function initialize_tree(points::Vector{Vertex})::DelaunayTree
+function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
     center, radius = boundingsphere(positions)
     radius = radius*2
@@ -26,6 +26,28 @@ function initialize_tree(points::Vector{Vertex})::DelaunayTree
     children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [], 5 => [])
     step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}(), 5 => Dict{Vector{Int},Vector{Int}}())
     neighbors_relation = Dict(1 => [2, 3, 4, 5], 2 => [1], 3 => [1], 4 => [1], 5 => [1])
+    return DelaunayTree(verticies, nodes, children_relation, step_children_relation, neighbors_relation)
+end
+
+function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
+    positions = map(x -> x.position, points)
+    center, radius = boundingsphere(positions)
+    radius = radius*2
+    first_vertex = Vertex(-6, center + [radius * cos(0* pi / 3), radius * sin(0 * pi / 3)])
+    second_vertex = Vertex(-5, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)])
+    third_vertex = Vertex(-4, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)])
+    ghost_vertex = [Vertex(-3, center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)]), Vertex(-2, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)]), Vertex(-1, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)])]
+    verticies = [first_vertex, second_vertex, third_vertex, ghost_vertex...]
+    verticies = Dict(map(x -> x.id => x, verticies))
+    node = DelaunayTreeNode(1, false, [-6, -5, -4])
+    unbounded_node = Vector{DelaunayTreeNode}()
+    push!(unbounded_node, DelaunayTreeNode(2, false, [-3, -6, -5]))
+    push!(unbounded_node, DelaunayTreeNode(3, false, [-2, -6, -4]))
+    push!(unbounded_node, DelaunayTreeNode(4, false, [-1, -5, -4]))
+    nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3])
+    children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [])
+    step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}())
+    neighbors_relation = Dict(1 => [2, 3, 4], 2 => [1], 3 => [1], 4 => [1])
     return DelaunayTree(verticies, nodes, children_relation, step_children_relation, neighbors_relation)
 end
 
@@ -58,16 +80,16 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
     end
 end
 
-function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode)::Vector{Int}
+function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode; n_dim::Int = 3)::Vector{Int}
     common = intersect(simplex1.vertices, simplex2.vertices)
-    if length(common) == 3
+    if length(common) == n_dim
         return common
     else
         return []
     end
 end
 
-function insert_point(tree::DelaunayTree, point::Vertex)
+function insert_point(tree::DelaunayTree, point::Vertex; n_dim::Int=3)
     killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree)
     println("killed_nodes: ", killed_nodes)
     new_node_id = Vector{Int}()
@@ -76,8 +98,8 @@ function insert_point(tree::DelaunayTree, point::Vertex)
             tree.simplices[node_id].dead = true
             for neighbor_id in tree.neighbors_relation[node_id]
                 if !in_sphere(neighbor_id, point, tree)
-                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id])
-                    if length(facet) == 3
+                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dim=n_dim)
+                    if length(facet) == n_dim
                         # Creating new node
                         new_id = length(tree.simplices) + 1
                         println("new_id: ", new_id)
@@ -112,7 +134,7 @@ function insert_point(tree::DelaunayTree, point::Vertex)
             new_id1 = new_node_id[i]
             new_id2 = new_node_id[j]
             facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2])
-            if length(facet) == 3
+            if length(facet) == n_dim
                 push!(tree.neighbors_relation[new_id1], new_id2)
                 push!(tree.neighbors_relation[new_id2], new_id1)
             end
@@ -121,26 +143,40 @@ function insert_point(tree::DelaunayTree, point::Vertex)
     tree.vertices[point.id] = point
 end
 
-test_points = initialize_vertex(100)
-tree = initialize_tree(test_points)
-# println(locate(Vector{Int}(), Vector{Int}(), test_points[1], 1, delaunay_tree))
-# insert_point(tree, test_points[1])
-# insert_point(tree, test_points[2])
+test_points = initialize_vertex(100, n_dims=2)
+tree = initialize_tree_2d(test_points)
 
-for i in 1:10
-    insert_point(tree, test_points[i])
+for i in 1:3
+    insert_point(tree, test_points[i], n_dim=2)
 end
 # new_tree = deepcopy(tree)
 
-
-x,y,z = [], [], []
-for simplex in values(tree.simplices)
-    for vertex_id in simplex.vertices
-        push!(x, tree.vertices[vertex_id].position[1])
-        push!(y, tree.vertices[vertex_id].position[2])
-        push!(z, tree.vertices[vertex_id].position[3])
+function plot_simplex_2d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
+    x, y = [], []
+    for vertex_id in [1,2,3,1]
+        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
+        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
     end
+    return x, y
 end
 
-path3d(x, y, z, label="Points", size=(800, 800))
+x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
+plot(x, y, label="Points", size=(800, 800))
+scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color="red")
+function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
+    x, y, z = [], [], []
+    for vertex_id in [1,2,3,1,4,3,2,4]
+        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
+        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
+        push!(z, vertices[simplex.vertices[vertex_id]].position[3])
+    end
+    return x, y, z
+end
+
+x,y,z = plot_simplex(tree.simplices[1], tree.vertices)
+plot3d(x, y, z, label="Points", size=(800, 800))
+x,y,z = plot_simplex(tree.simplices[6], tree.vertices)
+plot3d!(x, y, z, label="Points", size=(800, 800))
+x,y,z = plot_simplex(tree.simplices[13], tree.vertices)
+plot3d!(x, y, z, label="Points", size=(800, 800))
 scatter!([test_points[2].position[1]], [test_points[2].position[2]], [test_points[2].position[3]], label="New Point", color="red")

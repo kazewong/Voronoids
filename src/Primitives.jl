@@ -3,8 +3,8 @@ struct Vertex
     position::Vector{Float64}
 end
 
-function initialize_vertex(n::Int)::Vector{Vertex}
-    return [Vertex(i, rand(3)) for i in 1:n]
+function initialize_vertex(n::Int; n_dims::Int = 3)::Vector{Vertex}
+    return [Vertex(i, rand(n_dims)) for i in 1:n]
 end
 
 mutable struct DelaunayTreeNode
