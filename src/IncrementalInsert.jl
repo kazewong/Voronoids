@@ -143,7 +143,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dim::Int=3)
     tree.vertices[point.id] = point
 end
 
-test_points = initialize_vertex(100, n_dims=2)
+test_points = initialize_vertex(10, n_dims=2)
 tree = initialize_tree_2d(test_points)
 
 for i in 1:3
@@ -162,6 +162,10 @@ end
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
+for i in 1:3
+    x,y = plot_simplex_2d(tree.simplices[i+1], tree.vertices)
+    plot!(x, y, label="Points", size=(800, 800))
+end
 scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color="red")
 function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
     x, y, z = [], [], []
@@ -172,11 +176,3 @@ function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
     end
     return x, y, z
 end
-
-x,y,z = plot_simplex(tree.simplices[1], tree.vertices)
-plot3d(x, y, z, label="Points", size=(800, 800))
-x,y,z = plot_simplex(tree.simplices[6], tree.vertices)
-plot3d!(x, y, z, label="Points", size=(800, 800))
-x,y,z = plot_simplex(tree.simplices[13], tree.vertices)
-plot3d!(x, y, z, label="Points", size=(800, 800))
-scatter!([test_points[2].position[1]], [test_points[2].position[2]], [test_points[2].position[3]], label="New Point", color="red")
