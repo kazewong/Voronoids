@@ -8,7 +8,7 @@ include("Primitives.jl")
 function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
     center, radius = boundingsphere(positions)
-    radius = radius*2
+    radius = radius*3
     first_vertex = Vertex(-8, center + [0, 0, radius])
     second_vertex = Vertex(-7, center + [radius * cos(0), radius * sin(0), -radius ])
     third_vertex = Vertex(-6, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3), -radius])
@@ -32,7 +32,7 @@ end
 function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
     center, radius = boundingsphere(positions)
-    radius = radius*2
+    radius = radius*3
     first_vertex = Vertex(-6, center + [radius * cos(0* pi / 3), radius * sin(0 * pi / 3)])
     second_vertex = Vertex(-5, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)])
     third_vertex = Vertex(-4, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)])
