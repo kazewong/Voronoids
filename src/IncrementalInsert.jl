@@ -176,9 +176,11 @@ end
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
-for i in 2:length(tree.simplices)
-    x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
-    plot!(x, y, label="Points", size=(800, 800))
+for i in 2:7#length(tree.simplices)
+    # if !tree.simplices[i].dead
+        x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
+        plot!(x, y, label="Points", size=(800, 800))
+    # end
 end
 
 scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color="red")
