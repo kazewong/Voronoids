@@ -46,6 +46,9 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
             locate(visited_ids, output, vertex, child_id, tree)
         end
         step_childrens = collect(values(tree.step_children_relation[current_node_id]))
+        if length(step_childrens) > 0
+            step_childrens = vcat(step_childrens...)
+        end
         for step_children_id in step_childrens
             locate(visited_ids, output, vertex, step_children_id, tree)
         end
