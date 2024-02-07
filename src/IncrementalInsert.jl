@@ -3,6 +3,7 @@ using BoundingSphere
 using LinearAlgebra
 using Plots
 plotlyjs()
+using Random
 include("Primitives.jl")
 
 function plot_simplex_2d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
@@ -162,6 +163,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dim::Int=3)
     tree.vertices[point.id] = point
 end
 
+Random.seed!(1234)
 test_points = initialize_vertex(3, n_dims=2)
 tree = initialize_tree_2d(test_points)
 
