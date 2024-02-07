@@ -164,7 +164,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
         for j in i+1:length(new_node_id)
             new_id1 = new_node_id[i]
             new_id2 = new_node_id[j]
-            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2])
+            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2], n_dims=n_dims)
             if length(facet) == n_dims
                 push!(tree.neighbors_relation[new_id1], new_id2)
                 push!(tree.neighbors_relation[new_id2], new_id1)
@@ -174,16 +174,12 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
     tree.vertices[point.id] = point
 end
 
-Random.seed!(1234)
+Random.seed!(123)
 test_points = initialize_vertex(3, n_dims=2)
 tree = initialize_tree_2d(test_points)
 insert_point(tree, test_points[1], n_dims=2)
-for i in 1:3
-    insert_point(tree, test_points[i], n_dims=2)
-end
-# new_tree = deepcopy(tree)
-
-
+insert_point(tree, test_points[2], n_dims=2)
+insert_point(tree, test_points[3], n_dims=2)
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
@@ -194,4 +190,4 @@ for i in 2:length(tree.simplices)
     end
 end
 
-scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color="red")
+scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green"])
