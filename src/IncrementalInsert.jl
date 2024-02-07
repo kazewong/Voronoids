@@ -234,14 +234,13 @@ end
 
 Random.seed!(123)
 n = 5
-test_points = initialize_vertex(n, n_dims=2)
+n_dims = 2
+test_points = initialize_vertex(n, n_dims=n_dims)
 tree = initialize_tree_2d(test_points)
 
-insert_point(tree, test_points[1], n_dims=2)
-insert_point(tree, test_points[2], n_dims=2)
-insert_point(tree, test_points[3], n_dims=2)
-insert_point(tree, test_points[4], n_dims=2)
-insert_point(tree, test_points[5], n_dims=2)
+for point in test_points
+    insert_point(tree, point, n_dims=n_dims)
+end
 
 x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
 plot(x, y, label="Points", size=(800, 800))
