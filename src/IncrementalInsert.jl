@@ -290,30 +290,33 @@ function test_2d(n::Int; seed::Int)
 end
 
 
-# function test_3d(n::Int; seed::Int)
+function test_3d(n::Int; seed::Int)
+    Random.seed!(seed)
+    n_dims = 3
+    test_points = initialize_vertex(n, n_dims=n_dims)
+    tree = initialize_tree_3d(test_points)
 
-n = 200
-seed = 123
-Random.seed!(seed)
-n_dims = 3
-test_points = initialize_vertex(n, n_dims=n_dims)
-tree = initialize_tree_3d(test_points)
-
-for point in test_points
-    insert_point(tree, point, n_dims=n_dims)
-end
-
-x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
-p = plot3d(x, y, z, label="Points", size=(800, 800))
-for i in 2:length(tree.simplices)
-    if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-        x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
-        plot3d!(x, y, z, label="Points", size=(800, 800))
+    for point in test_points
+        insert_point(tree, point, n_dims=n_dims)
     end
+
+    # x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
+    # p = plot3d(x, y, z, label="Points", size=(800, 800))
+    # for i in 2:length(tree.simplices)
+    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
+    #         x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
+    #         plot3d!(x, y, z, label="Points", size=(800, 800))
+    #     end
+    # end
+
+    # scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
+
+    # center, R = circumsphere(1, tree)
+    # surface!(sphere(center, R), color=:red, alpha=0.3)
+    check_delaunay(tree, n_dims=3)
+    return tree
 end
 
-scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
-
-center, R = circumsphere(1, tree)
-surface!(sphere(center, R), color=:red, alpha=0.3)
-check_delaunay(tree, n_dims=3)
+using Profile
+using ProfileView
+@ProfileView.profview test_3d(20,seed=1)
