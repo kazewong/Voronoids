@@ -56,26 +56,43 @@ end
 function circumsphere(node_id::Int, tree::DelaunayTree)
     vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
     # Convert vertices into Julia tuples if they're not already
-    A = vertices[1]
-    B = vertices[2]
-    C = vertices[3]
-    D = vertices[4]
+    v1 = vertices[1]
+    v2 = vertices[2]
+    v3 = vertices[3]
+    v4 = vertices[4]
 
-    # Construct matrix A and vector B for the system AX = B
-    M = [2*(B - A) 2*(C - A) 2*(D - A)]
-    b = [dot(B, B) - dot(A, A), dot(C, C) - dot(A, A), dot(D, D) - dot(A, A)]
+    if (v1==v2) || (v1==v3) || (v1==v4) || (v2==v3) || (v2==v4) || (v3==v4)
+        return ((0, 0, 0), 0)
+    end
 
-    # Solve the system to find the circumcenter and radius squared
-    X = M \ b
+    a = det([v1[1] v1[2] v1[3] 1;
+         v2[1] v2[2] v2[3] 1;
+         v3[1] v3[2] v3[3] 1;
+         v4[1] v4[2] v4[3] 1])
 
-    # The circumcenter coordinates
-    center = X[1:3]
+    Dx = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[2] v1[3] 1;
+        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[2] v2[3] 1;
+        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[2] v3[3] 1;
+        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[2] v4[3] 1])
 
-    # Radius is the distance from the center to any vertex, here A is chosen
-    radius_squared = dot(A - center, A - center) + X[4]
-    radius = sqrt(radius_squared)
+    Dy = - det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[3] 1;
+        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[3] 1;
+        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[3] 1;
+        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[3] 1])
 
-    return (center[1:3], radius) # Return the center coordinates and the radius
+    Dz = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] 1;
+        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] 1;
+        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] 1;
+        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] 1])
+
+    c = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] v1[3];
+        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] v2[3];
+        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] v3[3];
+        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] v4[3]])
+
+    radius = sqrt(Dx^2 + Dy^2 + Dz^2 - 4*a*c) / (2*abs(a))
+
+    return ([Dx/2/a,Dy/2/a,Dz/2/a], radius) # Return the center coordinates and the radius
 end
 
 
@@ -227,7 +244,7 @@ function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
         if !tree.simplices[i].dead
             for j in keys(tree.vertices)
                 if j > 0
-                    if in_sphere(i, tree.vertices[j], tree, n_dims=n_dims) && j ∉ tree.simplices[i].vertices
+                    if in_sphere(i, tree.vertices[j], tree, n_dims=n_dims) && j ∉ tree.simplices[i].vertices && all(tree.simplices[i].vertices.>0)
                         println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                     end
                 end
@@ -262,9 +279,10 @@ function test_2d(n::Int; seed::Int)
     return p
 end
 
+
 # function test_3d(n::Int; seed::Int)
 
-n = 10
+n = 5
 seed = 123
 Random.seed!(seed)
 n_dims = 3
@@ -276,7 +294,7 @@ for point in test_points
 end
 
 x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
-p = plot3d(x, y, label="Points", size=(800, 800))
+p = plot3d(x, y, z, label="Points", size=(800, 800))
 for i in 2:length(tree.simplices)
     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
         x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
@@ -285,11 +303,15 @@ for i in 2:length(tree.simplices)
 end
 
 scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
-
+function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
+    n = 100
+    u = range(-π, π; length = n)
+    v = range(0, π; length = n)
+    x = C[1] .+ r*cos.(u) * sin.(v)'
+    y = C[2] .+ r*sin.(u) * sin.(v)'
+    z = C[3] .+ r*ones(n) * cos.(v)'
+    return x, y, z
+end
+center, R = circumsphere(1, tree)
+surface!(sphere(center, R), color=:red, alpha=0.3)
 check_delaunay(tree, n_dims=3)
-
-# return p
-# end
-
-
-# display(test_3d(10, seed=123))
