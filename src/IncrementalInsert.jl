@@ -25,6 +25,16 @@ function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
     return x, y, z
 end
 
+function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
+    n = 100
+    u = range(-π, π; length = n)
+    v = range(0, π; length = n)
+    x = C[1] .+ r*cos.(u) * sin.(v)'
+    y = C[2] .+ r*sin.(u) * sin.(v)'
+    z = C[3] .+ r*ones(n) * cos.(v)'
+    return x, y, z
+end
+
 function circumcircle(node_id::Int, tree::DelaunayTree)
     vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
     x1, y1 = vertices[1]
@@ -184,22 +194,22 @@ end
 
 function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
     killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
-    println("killed_nodes: ", killed_nodes)
+    # println("killed_nodes: ", killed_nodes)
     new_node_id = Vector{Int}()
     for node_id in killed_nodes
         if !tree.simplices[node_id].dead
             tree.simplices[node_id].dead = true
             for neighbor_id in tree.neighbors_relation[node_id]
-                println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
+                # println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
                 if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
-                    print("neighbor_id: ", neighbor_id)
+                    # println("neighbor_id: ", neighbor_id)
                     facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
-                    println("facet: ", facet)
+                    # println("facet: ", facet)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
-                        println("new_id: ", new_id)
-                        println("facet: ", facet)
+                        # println("new_id: ", new_id)
+                        # println("facet: ", facet)
                         new_node = DelaunayTreeNode(new_id, false, [point.id, facet...])
                         tree.simplices[new_id] = new_node
                         push!(new_node_id, new_node.id)
@@ -282,7 +292,7 @@ end
 
 # function test_3d(n::Int; seed::Int)
 
-n = 5
+n = 200
 seed = 123
 Random.seed!(seed)
 n_dims = 3
@@ -303,15 +313,7 @@ for i in 2:length(tree.simplices)
 end
 
 scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
-function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
-    n = 100
-    u = range(-π, π; length = n)
-    v = range(0, π; length = n)
-    x = C[1] .+ r*cos.(u) * sin.(v)'
-    y = C[2] .+ r*sin.(u) * sin.(v)'
-    z = C[3] .+ r*ones(n) * cos.(v)'
-    return x, y, z
-end
+
 center, R = circumsphere(1, tree)
 surface!(sphere(center, R), color=:red, alpha=0.3)
 check_delaunay(tree, n_dims=3)
