@@ -150,10 +150,11 @@ function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
     push!(unbounded_node, DelaunayTreeNode(3, false, [-1, -6, -4]))
     push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -5, -4]))
     nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3])
+    parent_relation = Dict(1 => 0, 2 => 0, 3 => 0, 4 => 0)
     children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [])
     step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}())
     neighbors_relation = Dict(1 => [2, 3, 4], 2 => [1], 3 => [1], 4 => [1])
-    return DelaunayTree(verticies, nodes, children_relation, step_children_relation, neighbors_relation)
+    return DelaunayTree(verticies, nodes, parent_relation, children_relation, step_children_relation, neighbors_relation)
 end
 
 function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
@@ -241,20 +242,15 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
         end
     end
     
-    println("len new_node_id: ", length(new_node_id))
+    # println("len new_node_id: ", length(new_node_id))
     @timeit tmr "making new neighbor" for i in 1:length(new_node_id)
-        for children in tree.children_relation[tree.parent_relation[new_node_id[i]]]
-            facet = common_facet(tree.simplices[new_node_id[i]], tree.simplices[children], n_dims=n_dims)
+        for j in i+1:length(new_node_id)
+            new_id1 = new_node_id[i]
+            new_id2 = new_node_id[j]
+            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2], n_dims=n_dims)
             if length(facet) == n_dims
-                push!(tree.neighbors_relation[new_node_id[i]], children)
-                push!(tree.neighbors_relation[children], new_node_id[i])
-            end
-        end
-        for step_children in reduce(vcat,map(x->tree.children_relation[x], tree.neighbors_relation[new_node_id[i]]))
-            facet = common_facet(tree.simplices[new_node_id[i]], tree.simplices[step_children], n_dims=n_dims)
-            if length(facet) == n_dims
-                push!(tree.neighbors_relation[new_node_id[i]], step_children)
-                push!(tree.neighbors_relation[step_children], new_node_id[i])
+                push!(tree.neighbors_relation[new_id1], new_id2)
+                push!(tree.neighbors_relation[new_id2], new_id1)
             end
         end
     end
@@ -296,9 +292,9 @@ function test_2d(n::Int; seed::Int)
     
     # scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
     
-    check_delaunay(tree, n_dims=2)
+    # check_delaunay(tree, n_dims=2)
 
-    return p
+    return tree
 end
 
 
@@ -329,4 +325,5 @@ function test_3d(n::Int; seed::Int)
     return tree
 end
 
+@timeit tmr "test2d" tree = test_2d(100000,seed=1234)
 tree = test_3d(200,seed=1)
