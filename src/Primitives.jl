@@ -16,6 +16,7 @@ end
 struct DelaunayTree
     vertices::Dict{Int,Vertex}
     simplices::Dict{Int, DelaunayTreeNode}
+    parent_relation::Dict{Int,Int}
     children_relation::Dict{Int,Vector{Int}}
     step_children_relation::Dict{Int,Dict{Vector{Int},Vector{Int}}}
     neighbors_relation::Dict{Int,Vector{Int}}
