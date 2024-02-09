@@ -6,6 +6,7 @@ plotlyjs()
 using Random
 using TimerOutputs
 include("Primitives.jl")
+using Memoize
 
 const tmr = TimerOutput()
 
@@ -38,7 +39,7 @@ function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
     return x, y, z
 end
 
-function circumcircle(node_id::Int, tree::DelaunayTree)
+@memoize function circumcircle(node_id::Int, tree::DelaunayTree)
     vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
     x1, y1 = vertices[1]
     x2, y2 = vertices[2]
@@ -66,7 +67,7 @@ function circumcircle(node_id::Int, tree::DelaunayTree)
     return ((X, Y), R)
 end
 
-function circumsphere(node_id::Int, tree::DelaunayTree)
+@memoize function circumsphere(node_id::Int, tree::DelaunayTree)
     vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
     # Convert vertices into Julia tuples if they're not already
     v1 = vertices[1]
@@ -170,7 +171,9 @@ end
 function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
     if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree, n_dims=n_dims)
         push!(visited_ids, current_node_id)
-        push!(output, current_node_id)
+        if !tree.simplices[current_node_id].dead
+            push!(output, current_node_id)
+        end
         childrens = tree.children_relation[current_node_id]
         for child_id in childrens
             locate(visited_ids, output, vertex, child_id, tree, n_dims=n_dims)
@@ -233,7 +236,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
                         # Updating neighbor relationship for the neighbor of the killed node
                         killed_node_id = findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])
                         if killed_node_id !== nothing
-                            tree.neighbors_relation[neighbor_id][findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])] = new_node.id
+                            tree.neighbors_relation[neighbor_id][killed_node_id] = new_node.id
                         end
                     end
                 end
@@ -280,18 +283,18 @@ function test_2d(n::Int; seed::Int)
         insert_point(tree, point, n_dims=n_dims)
     end
     
-    x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
-    plot(x, y, label="Points", size=(800, 800))
-    for i in 2:length(tree.simplices)
-        if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-            x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
-            plot!(x, y, label="Points", size=(800, 800))
-        end
-    end
+    # x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
+    # plot(x, y, label="Points", size=(800, 800))
+    # for i in 2:length(tree.simplices)
+    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
+    #         x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
+    #         plot!(x, y, label="Points", size=(800, 800))
+    #     end
+    # end
     
-    p = scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
+    # p = scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
     
-    # check_delaunay(tree, n_dims=2)
+    check_delaunay(tree, n_dims=2)
 
     return tree, p
 end
@@ -307,23 +310,25 @@ function test_3d(n::Int; seed::Int)
         @timeit tmr "insert_point" insert_point(tree, point, n_dims=n_dims)
     end
 
-    x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
-    p = plot3d(x, y, z, label="Points", size=(800, 800))
-    for i in 2:length(tree.simplices)
-        if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-            x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
-            plot3d!(x, y, z, label="Points", size=(800, 800))
-        end
-    end
+    # x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
+    # p = plot3d(x, y, z, label="Points", size=(800, 800))
+    # for i in 2:length(tree.simplices)
+    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
+    #         x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
+    #         plot3d!(x, y, z, label="Points", size=(800, 800))
+    #     end
+    # end
 
-    scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", c=distinguishable_colors(n))
+    # scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", c=distinguishable_colors(n))
 
-    center, R = circumsphere(1, tree)
-    surface!(sphere(center, R), color=:red, alpha=0.3)
+    # center, R = circumsphere(1, tree)
+    # surface!(sphere(center, R), color=:red, alpha=0.3)
     # check_delaunay(tree, n_dims=3)
-    return tree, p
+    return tree#, p
 end
 
-@timeit tmr "test2d" tree, p = test_2d(5,seed=1234)
-tree,p = test_3d(10,seed=1)
-display(p)
+
+# @timeit tmr "test2d" tree, p = test_2d(100,seed=1234)
+@timeit tmr "test3d" tree = test_3d(50000,seed=1)
+tmr
+# display(p)
