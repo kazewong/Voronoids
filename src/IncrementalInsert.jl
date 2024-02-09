@@ -1,8 +1,8 @@
 using Revise
 using BoundingSphere
 using LinearAlgebra
-# using Plots
-# plotlyjs()
+using Plots
+plotlyjs()
 using Random
 using TimerOutputs
 include("Primitives.jl")
@@ -112,7 +112,7 @@ end
 function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
     center, radius = boundingsphere(positions)
-    radius = radius*3
+    radius = radius*5
     first_vertex = Vertex(-8, center + [0, 0, radius])
     second_vertex = Vertex(-7, center + [radius * cos(0), radius * sin(0), -radius ])
     third_vertex = Vertex(-6, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3), -radius])
@@ -160,7 +160,7 @@ end
 function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
     if n_dims==3
         center, radius = circumsphere(node_id, tree)
-        return norm(point.position .- center) < radius
+        return norm(point.position .- center) < radius 
     elseif n_dims==2
         center, radius = circumcircle(node_id, tree)
         return norm(point.position .- center) < radius
@@ -209,12 +209,11 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
                 @timeit tmr "check in sphere" if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
                     # println("neighbor_id: ", neighbor_id)
                     facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
-                    # println("facet: ", facet)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
-                        # println("new_id: ", new_id)
-                        # println("facet: ", facet)
+                        println("new_id: ", new_id)
+                        println("facet: ", facet)
                         new_node = DelaunayTreeNode(new_id, false, [point.id, facet...])
                         tree.simplices[new_id] = new_node
                         push!(new_node_id, new_node.id)
@@ -281,20 +280,20 @@ function test_2d(n::Int; seed::Int)
         insert_point(tree, point, n_dims=n_dims)
     end
     
-    # x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
-    # p = plot(x, y, label="Points", size=(800, 800))
-    # for i in 2:length(tree.simplices)
-    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-    #         x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
-    #         plot!(x, y, label="Points", size=(800, 800))
-    #     end
-    # end
+    x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
+    plot(x, y, label="Points", size=(800, 800))
+    for i in 2:length(tree.simplices)
+        if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
+            x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
+            plot!(x, y, label="Points", size=(800, 800))
+        end
+    end
     
-    # scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
+    p = scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
     
     # check_delaunay(tree, n_dims=2)
 
-    return tree
+    return p, tree
 end
 
 
@@ -317,13 +316,14 @@ function test_3d(n::Int; seed::Int)
     #     end
     # end
 
-    # scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
+    # scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", c=distinguishable_colors(n))
 
-    # center, R = circumsphere(1, tree)
-    # surface!(sphere(center, R), color=:red, alpha=0.3)
-    check_delaunay(tree, n_dims=3)
-    return tree
+    center, R = circumsphere(1, tree)
+    surface!(sphere(center, R), color=:red, alpha=0.3)
+    # check_delaunay(tree, n_dims=3)
+    return tree, p
 end
 
-@timeit tmr "test2d" tree = test_2d(10000,seed=1234)
-tree = test_3d(40,seed=1)
+@timeit tmr "test2d" p, tree = test_2d(5,seed=1234)
+tree,p = test_3d(300,seed=1)
+display(p)
