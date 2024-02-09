@@ -307,16 +307,16 @@ function test_3d(n::Int; seed::Int)
         @timeit tmr "insert_point" insert_point(tree, point, n_dims=n_dims)
     end
 
-    # x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
-    # p = plot3d(x, y, z, label="Points", size=(800, 800))
-    # for i in 2:length(tree.simplices)
-    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-    #         x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
-    #         plot3d!(x, y, z, label="Points", size=(800, 800))
-    #     end
-    # end
+    x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
+    p = plot3d(x, y, z, label="Points", size=(800, 800))
+    for i in 2:length(tree.simplices)
+        if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
+            x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
+            plot3d!(x, y, z, label="Points", size=(800, 800))
+        end
+    end
 
-    # scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", c=distinguishable_colors(n))
+    scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", c=distinguishable_colors(n))
 
     center, R = circumsphere(1, tree)
     surface!(sphere(center, R), color=:red, alpha=0.3)
@@ -325,5 +325,5 @@ function test_3d(n::Int; seed::Int)
 end
 
 @timeit tmr "test2d" tree, p = test_2d(5,seed=1234)
-tree,p = test_3d(1000,seed=1)
+tree,p = test_3d(10,seed=1)
 display(p)
