@@ -199,7 +199,7 @@ end
 
 function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
     @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
-    println("killed_nodes: ", filter(x->tree.simplices[x].dead==false, killed_nodes))
+    # println("killed_nodes: ", filter(x->tree.simplices[x].dead==false, killed_nodes))
     new_node_id = Vector{Int}()
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
         if !tree.simplices[node_id].dead
@@ -212,8 +212,8 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
-                        println("new_id: ", new_id)
-                        println("facet: ", facet)
+                        # println("new_id: ", new_id)
+                        # println("facet: ", facet)
                         new_node = DelaunayTreeNode(new_id, false, [point.id, facet...])
                         tree.simplices[new_id] = new_node
                         push!(new_node_id, new_node.id)
@@ -293,7 +293,7 @@ function test_2d(n::Int; seed::Int)
     
     # check_delaunay(tree, n_dims=2)
 
-    return p, tree
+    return tree, p
 end
 
 
@@ -324,6 +324,6 @@ function test_3d(n::Int; seed::Int)
     return tree, p
 end
 
-@timeit tmr "test2d" p, tree = test_2d(5,seed=1234)
-tree,p = test_3d(300,seed=1)
+@timeit tmr "test2d" tree, p = test_2d(5,seed=1234)
+tree,p = test_3d(1000,seed=1)
 display(p)
