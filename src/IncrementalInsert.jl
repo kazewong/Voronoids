@@ -143,7 +143,7 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     ghost_vertex = [center + [0, 0, radius], center + [0, 0, radius], center + [0, 0, radius], center + [radius  * cos(0), radius * sin(0), -radius]]
     verticies = [first_vertex, second_vertex, third_vertex, fourth_vertex, ghost_vertex...]
 
-    id = [-8, -7, -6, -5, -4, -3, -2, -1]
+    id = [-7, -6, -5, -4, -3, -2, -1, 0]
     simplicies = [[1, 2, 3, 4], [5, 1, 2, 3], [6, 1, 3, 4], [7, 1, 4, 2], [8, 2, 3, 4]]
     dead = [false, false, false, false, false]
     centers = [center, [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
@@ -165,7 +165,7 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     ghost_vertex = [center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)], center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)], center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)]]
     verticies = [first_vertex, second_vertex, third_vertex, ghost_vertex...]
 
-    id = [-6, -5, -4, -3, -2, -1]
+    id = [-5, -4, -3, -2, -1, 0]
     simplicies = [[1, 2, 3], [4, 1, 2], [6, 1, 3], [5, 2, 3]]
     dead = [false, false, false, false]
     centers = [center, [0, 0], [0, 0], [0, 0]]
@@ -178,18 +178,13 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, verticies)
 end
 
-function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
-    if n_dims==3
-        return norm(point.position .- tree.simplices[node_id].circumcenter) < tree.simplices[node_id].radius
-    elseif n_dims==2
-        center, radius = circumcircle(node_id, tree)
-        return norm(point.position .- tree.simplices[node_id].circumcenter) < tree.simplices[node_id].radius
-    end
+function in_sphere(node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Bool
+    return norm(point .- tree.centers[node_id]) < tree.radii[node_id]
 end
 
-function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
-    if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree, n_dims=n_dims)
-        if !tree.simplices[current_node_id].dead
+function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vector{Int}, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
+    if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree)
+        if !tree.dead[current_node_id]
             push!(output, current_node_id)
             return output
         end
@@ -215,7 +210,7 @@ function locate(vertex::Vertex, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int
     insphere = false
     node_id = 1
     while !insphere
-        if in_sphere(alive_point_id[node_id], vertex, tree, n_dims=n_dims)
+        if in_sphere(alive_point_id[node_id], vertex, tree)
             insphere = true
             break
         else
@@ -228,7 +223,7 @@ end
 function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tree::DelaunayTree; n_dims=3)::Vector{Int}
     neighbors = tree.neighbors_relation[node_id]
     for neighbor_id in neighbors
-        if neighbor_id ∉ output && in_sphere(neighbor_id, point, tree, n_dims=n_dims)
+        if neighbor_id ∉ output && in_sphere(neighbor_id, point, tree)
             push!(output, neighbor_id)
             find_all_neighbors(output, neighbor_id, point, tree)
         end
@@ -236,8 +231,8 @@ function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tr
     return output
 end
 
-function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode; n_dims::Int = 3)::Vector{Int}
-    @timeit tmr "check intersect" common = intersect(simplex1.vertices, simplex2.vertices)
+function common_facet(simplex1::Vector{Int}, simplex2::Vector{Int}; n_dims::Int = 3)::Vector{Int}
+    @timeit tmr "check intersect" common = intersect(simplex1, simplex2)
     if length(common) == n_dims
         return common
     else
@@ -250,24 +245,27 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
     # println("killed_nodes: ", filter(x->tree.simplices[x].dead==false, killed_nodes))
     new_node_id = Vector{Int}()
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
-        if !tree.simplices[node_id].dead
-            tree.simplices[node_id].dead = true
+        if !tree.dead[node_id].dead
+            tree.dead[node_id].dead = true
             for neighbor_id in tree.neighbors_relation[node_id]
                 # println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
-                @timeit tmr "in sphere" if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
+                @timeit tmr "in sphere" if !in_sphere(neighbor_id, point, tree)
                     # println("neighbor_id: ", neighbor_id)
-                    @timeit tmr "check facet" facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
+                    @timeit tmr "check facet" facet = common_facet(tree.vertices[tree.simplices[node_id]], tree.vertices[tree.simplices[neighbor_id]], n_dims=n_dims)
                     if length(facet) == n_dims
                         # Creating new node
-                        new_id = length(tree.simplices) + 1
+                        new_id = tree.id[end] + 1
+                        push!(tree.id, new_id)
+                        push!(tree.simplices, [point.id, facet...])
+                        push!(tree.dead, false)
                         center, radius = circumsphere([point.position, map(x->tree.vertices[x].position, facet)...], n_dims=n_dims)
-                        new_node = DelaunayTreeNode(new_id, false, [point.id, facet...], center, radius)
-                        tree.simplices[new_id] = new_node
-                        push!(new_node_id, new_node.id)
-                        tree.parent_relation[new_node.id] = node_id
-                        tree.children_relation[new_node.id] = Vector{Int}()
-                        tree.step_children_relation[new_node.id] = Dict{Vector{Int}, Vector{Int}}()
-                        tree.neighbors_relation[new_node.id] = [neighbor_id]
+                        push!(tree.centers, center)
+                        push!(tree.radii, radius)
+
+                        push!(tree.parent_relation, node_id)
+                        push!(tree.children_relation, Vector{Int}())
+                        push!(tree.step_children_relation, Vector{Pair(Vector{Int}, Vector{Int})}())
+                        push!(tree.neighbors_relation, [neighbor_id])
 
                         # Updating parent relationship
                         push!(tree.children_relation[node_id],new_node.id)
@@ -293,7 +291,7 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
         for j in i+1:length(new_node_id)
             new_id1 = new_node_id[i]
             new_id2 = new_node_id[j]
-            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2], n_dims=n_dims)
+            facet = common_facet(tree.vertices[tree.simplices[new_id1]], tree.vertices[tree.simplices[new_id2]], n_dims=n_dims)
             if length(facet) == n_dims
                 push!(tree.neighbors_relation[new_id1], new_id2)
                 push!(tree.neighbors_relation[new_id2], new_id1)
@@ -308,7 +306,7 @@ function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
         if !tree.simplices[i].dead
             for j in keys(tree.vertices)
                 if j > 0
-                    if in_sphere(i, tree.vertices[j], tree, n_dims=n_dims) && j ∉ tree.simplices[i].vertices && all(tree.simplices[i].vertices.>0)
+                    if in_sphere(i, tree.vertices[j], tree) && j ∉ tree.simplices[i].vertices && all(tree.simplices[i].vertices.>0)
                         println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                     end
                 end

@@ -17,7 +17,7 @@ mutable struct DelaunayTreeNode
     radius::Float64
 end
 
-struct DelaunayTree
+mutable struct DelaunayTree
     id::Vector{Int}
     simplices::Vector{Vector{Int}}
     dead::Vector{Bool}
@@ -25,7 +25,7 @@ struct DelaunayTree
     radii::Vector{Float64}
     parent_relation::Vector{Int}
     children_relation::Vector{Vector{Int}}
-    step_children_relation::Vector{Pair{Vector{Int},Vector{Int}}}
+    step_children_relation::Vector{Dict{Vector{Int},Vector{Int}}}
     neighbors_relation::Vector{Vector{Int}}
 
     vertices::Vector{Vector{Float64}}
@@ -34,3 +34,4 @@ struct DelaunayTree
 
     # step_children_relation::Dict{Int,Dict{Vector{Int},Vector{Int}}}
 end
+
