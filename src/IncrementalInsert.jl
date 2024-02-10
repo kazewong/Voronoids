@@ -192,9 +192,9 @@ end
 
 function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
     if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree, n_dims=n_dims)
-        push!(visited_ids, current_node_id)
         if !tree.simplices[current_node_id].dead
             push!(output, current_node_id)
+            return output
         end
         childrens = tree.children_relation[current_node_id]
         for child_id in childrens
@@ -211,6 +211,21 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
     else
         return output
     end
+end
+
+function locate(vertex::Vertex, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
+    alive_point_id = map(x->x.id, filter(x->!x.dead, collect(values(tree.simplices))))
+    insphere = false
+    node_id = 1
+    while !insphere
+        if in_sphere(alive_point_id[node_id], vertex, tree, n_dims=n_dims)
+            insphere = true
+            break
+        else
+            node_id += 1
+        end
+    end
+    return find_all_neighbors(Vector{Int}(), alive_point_id[node_id], vertex, tree, n_dims=n_dims)
 end
 
 function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tree::DelaunayTree; n_dims=3)::Vector{Int}
