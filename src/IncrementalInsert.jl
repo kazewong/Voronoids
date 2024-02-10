@@ -39,8 +39,7 @@ function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
     return x, y, z
 end
 
-@memoize function circumcircle(node_id::Int, tree::DelaunayTree)
-    vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
+@memoize function circumcircle(vectices::Vector{Vector{Float64}})
     x1, y1 = vertices[1]
     x2, y2 = vertices[2]
     x3, y3 = vertices[3]
@@ -67,48 +66,72 @@ end
     return ((X, Y), R)
 end
 
-@memoize function circumsphere(node_id::Int, tree::DelaunayTree)
-    vertices = map(x->tree.vertices[x].position, tree.simplices[node_id].vertices)
-    # Convert vertices into Julia tuples if they're not already
-    v1 = vertices[1]
-    v2 = vertices[2]
-    v3 = vertices[3]
-    v4 = vertices[4]
+@memoize function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
+    if n_dims == 2
+        x1, y1 = vertices[1]
+        x2, y2 = vertices[2]
+        x3, y3 = vertices[3]
 
-    if (v1==v2) || (v1==v3) || (v1==v4) || (v2==v3) || (v2==v4) || (v3==v4)
-        return ((0, 0, 0), 0)
+        # Midpoints of AB and BC
+        D = ((x1 + x2) / 2, (y1 + y2) / 2)
+        E = ((x2 + x3) / 2, (y2 + y3) / 2)
+
+        # Slopes of AB and BC
+        mAB = (y2 - y1) / (x2 - x1)
+        mBC = (y3 - y2) / (x3 - x2)
+
+        # Slopes of perpendicular bisectors
+        mD = -1 / mAB
+        mE = -1 / mBC
+
+        # Calculating the circumcenter (X, Y)
+        X = (mD * D[1] - mE * E[1] + E[2] - D[2]) / (mD - mE)
+        Y = mD * (X - D[1]) + D[2]
+
+        # Radius of the circumcircle
+        R = sqrt((X - x1)^2 + (Y - y1)^2)
+
+        return ((X, Y), R)
+    elseif n_dims == 3
+        v1 = vertices[1]
+        v2 = vertices[2]
+        v3 = vertices[3]
+        v4 = vertices[4]
+
+        if (v1==v2) || (v1==v3) || (v1==v4) || (v2==v3) || (v2==v4) || (v3==v4)
+            return ((0, 0, 0), 0)
+        end
+
+        a = det([v1[1] v1[2] v1[3] 1;
+            v2[1] v2[2] v2[3] 1;
+            v3[1] v3[2] v3[3] 1;
+            v4[1] v4[2] v4[3] 1])
+
+        Dx = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[2] v1[3] 1;
+            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[2] v2[3] 1;
+            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[2] v3[3] 1;
+            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[2] v4[3] 1])
+
+        Dy = - det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[3] 1;
+            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[3] 1;
+            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[3] 1;
+            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[3] 1])
+
+        Dz = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] 1;
+            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] 1;
+            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] 1;
+            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] 1])
+
+        c = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] v1[3];
+            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] v2[3];
+            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] v3[3];
+            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] v4[3]])
+
+        radius = sqrt(Dx^2 + Dy^2 + Dz^2 - 4*a*c) / (2*abs(a))
+
+        return ([Dx/2/a,Dy/2/a,Dz/2/a], radius) # Return the center coordinates and the radius
     end
-
-    a = det([v1[1] v1[2] v1[3] 1;
-         v2[1] v2[2] v2[3] 1;
-         v3[1] v3[2] v3[3] 1;
-         v4[1] v4[2] v4[3] 1])
-
-    Dx = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[2] v1[3] 1;
-        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[2] v2[3] 1;
-        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[2] v3[3] 1;
-        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[2] v4[3] 1])
-
-    Dy = - det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[3] 1;
-        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[3] 1;
-        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[3] 1;
-        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[3] 1])
-
-    Dz = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] 1;
-        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] 1;
-        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] 1;
-        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] 1])
-
-    c = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] v1[3];
-        v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] v2[3];
-        v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] v3[3];
-        v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] v4[3]])
-
-    radius = sqrt(Dx^2 + Dy^2 + Dz^2 - 4*a*c) / (2*abs(a))
-
-    return ([Dx/2/a,Dy/2/a,Dz/2/a], radius) # Return the center coordinates and the radius
 end
-
 
 function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     positions = map(x -> x.position, points)
@@ -121,14 +144,14 @@ function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
     ghost_vertex = [Vertex(-4, center + [0, 0, radius]), Vertex(-3, center + [0, 0, radius]), Vertex(-2, center + [0, 0, radius]), Vertex(-1, center + [radius  * cos(0), radius * sin(0), -radius])]
     verticies = [first_vertex, second_vertex, third_vertex, fourth_vertex, ghost_vertex...]
     verticies = Dict(map(x -> x.id => x, verticies))
-    node = DelaunayTreeNode(1, false, [-8, -7, -6, -5])
+    node = DelaunayTreeNode(1, false, [-8, -7, -6, -5], center, radius)
     unbounded_node = Vector{DelaunayTreeNode}()
-    push!(unbounded_node, DelaunayTreeNode(2, false, [-4, -8, -7, -6]))
-    push!(unbounded_node, DelaunayTreeNode(3, false, [-3, -8, -6, -5]))
-    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -8, -5, -7]))
-    push!(unbounded_node, DelaunayTreeNode(5, false, [-1, -7, -6, -5]))
+    push!(unbounded_node, DelaunayTreeNode(2, false, [-4, -8, -7, -6], [0, 0, 0], 0))
+    push!(unbounded_node, DelaunayTreeNode(3, false, [-3, -8, -6, -5], [0, 0, 0], 0))
+    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -8, -5, -7], [0, 0, 0], 0))
+    push!(unbounded_node, DelaunayTreeNode(5, false, [-1, -7, -6, -5], [0, 0, 0], 0))
     nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3], 5 => unbounded_node[4])
-    parent_relation = Dict(1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0)
+    parent_relation = Dict(1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5)
     children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [], 5 => [])
     step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}(), 5 => Dict{Vector{Int},Vector{Int}}())
     neighbors_relation = Dict(1 => [2, 3, 4, 5], 2 => [1], 3 => [1], 4 => [1], 5 => [1])
@@ -145,11 +168,11 @@ function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
     ghost_vertex = [Vertex(-3, center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)]), Vertex(-2, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)]), Vertex(-1, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)])]
     verticies = [first_vertex, second_vertex, third_vertex, ghost_vertex...]
     verticies = Dict(map(x -> x.id => x, verticies))
-    node = DelaunayTreeNode(1, false, [-6, -5, -4])
+    node = DelaunayTreeNode(1, false, [-6, -5, -4], center, radius)
     unbounded_node = Vector{DelaunayTreeNode}()
-    push!(unbounded_node, DelaunayTreeNode(2, false, [-3, -6, -5]))
-    push!(unbounded_node, DelaunayTreeNode(3, false, [-1, -6, -4]))
-    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -5, -4]))
+    push!(unbounded_node, DelaunayTreeNode(2, false, [-3, -6, -5], [0, 0], 0))
+    push!(unbounded_node, DelaunayTreeNode(3, false, [-1, -6, -4], [0, 0], 0))
+    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -5, -4], [0, 0], 0))
     nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3])
     parent_relation = Dict(1 => 0, 2 => 0, 3 => 0, 4 => 0)
     children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [])
@@ -160,11 +183,10 @@ end
 
 function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
     if n_dims==3
-        center, radius = circumsphere(node_id, tree)
-        return norm(point.position .- center) < radius 
+        return norm(point.position .- tree.simplices[node_id].circumcenter) < tree.simplices[node_id].radius
     elseif n_dims==2
         center, radius = circumcircle(node_id, tree)
-        return norm(point.position .- center) < radius
+        return norm(point.position .- tree.simplices[node_id].circumcenter) < tree.simplices[node_id].radius
     end
 end
 
@@ -209,15 +231,14 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
             tree.simplices[node_id].dead = true
             for neighbor_id in tree.neighbors_relation[node_id]
                 # println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
-                @timeit tmr "check in sphere" if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
+                if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
                     # println("neighbor_id: ", neighbor_id)
                     facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
-                        # println("new_id: ", new_id)
-                        # println("facet: ", facet)
-                        new_node = DelaunayTreeNode(new_id, false, [point.id, facet...])
+                        center, radius = circumsphere([point.position, map(x->tree.vertices[x].position, facet)...], n_dims=n_dims)
+                        new_node = DelaunayTreeNode(new_id, false, [point.id, facet...], center, radius)
                         tree.simplices[new_id] = new_node
                         push!(new_node_id, new_node.id)
                         tree.parent_relation[new_node.id] = node_id
@@ -329,6 +350,6 @@ end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(100,seed=1234)
-@timeit tmr "test3d" tree = test_3d(50000,seed=1)
+@timeit tmr "test3d" tree = test_3d(30000,seed=1)
 tmr
 # display(p)

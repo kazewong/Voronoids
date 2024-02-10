@@ -1,3 +1,5 @@
+using NearestNeighbors
+
 struct Vertex
     id::Int
     position::Vector{Float64}
@@ -11,6 +13,8 @@ mutable struct DelaunayTreeNode
     id::Int
     dead::Bool
     vertices::Vector{Int}
+    circumcenter::Vector{Float64}
+    radius::Float64
 end
 
 struct DelaunayTree
