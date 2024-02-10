@@ -213,6 +213,17 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vertex, c
     end
 end
 
+function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tree::DelaunayTree; n_dims=3)::Vector{Int}
+    neighbors = tree.neighbors_relation[node_id]
+    for neighbor_id in neighbors
+        if neighbor_id ∉ output && in_sphere(neighbor_id, point, tree, n_dims=n_dims)
+            push!(output, neighbor_id)
+            find_all_neighbors(output, neighbor_id, point, tree)
+        end
+    end
+    return output
+end
+
 function common_facet(simplex1::DelaunayTreeNode, simplex2::DelaunayTreeNode; n_dims::Int = 3)::Vector{Int}
     @timeit tmr "check intersect" common = intersect(simplex1.vertices, simplex2.vertices)
     if length(common) == n_dims
@@ -231,9 +242,9 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
             tree.simplices[node_id].dead = true
             for neighbor_id in tree.neighbors_relation[node_id]
                 # println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
-                if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
+                @timeit tmr "in sphere" if !in_sphere(neighbor_id, point, tree, n_dims=n_dims)
                     # println("neighbor_id: ", neighbor_id)
-                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
+                    @timeit tmr "check facet" facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
@@ -350,6 +361,6 @@ end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(100,seed=1234)
-@timeit tmr "test3d" tree = test_3d(30000,seed=1)
+@timeit tmr "test3d" tree = test_3d(5000,seed=1)
 tmr
 # display(p)
