@@ -244,16 +244,14 @@ end
 
 function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
     @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
-    # println("killed_nodes: ", filter(x->tree.simplices[x].dead==false, killed_nodes))
+    # println("killed_nodes: ", killed_nodes)
     new_node_id = Vector{Int}()
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
         if !tree.dead[node_id]
             tree.dead[node_id] = true
             for neighbor_id in tree.neighbors_relation[node_id]
-                # println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
-                @timeit tmr "in sphere" if !in_sphere(neighbor_id, point, tree)
-                    # println("neighbor_id: ", neighbor_id)
-                    @timeit tmr "check facet" facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
+                if !in_sphere(neighbor_id, point, tree)
+                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
@@ -309,7 +307,7 @@ function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
         for i in 1:length(tree.simplices)
             if !tree.dead[i]
                 for j in tree.vertices
-                    if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>8)
+                    if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] #&& all(tree.simplices[i].>8)
                         println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                     end
                 end
@@ -364,25 +362,46 @@ function test_3d(n::Int; seed::Int)
         @timeit tmr "insert_point" insert_point(tree, point, n_dims=n_dims)
     end
 
-    # x,y,z = plot_simplex_3d(tree.simplices[1], tree.vertices)
-    # p = plot3d(x, y, z, label="Points", size=(800, 800))
-    # for i in 2:length(tree.simplices)
-    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-    #         x,y,z = plot_simplex_3d(tree.simplices[i], tree.vertices)
-    #         plot3d!(x, y, z, label="Points", size=(800, 800))
-    #     end
-    # end
+    x,y,z = plot_simplex_3d(1, tree)
+    plot3d(x, y, z, label="Points", size=(800, 800))
+    for i in 2:length(tree.simplices)
+        if !tree.dead[i] && all(tree.simplices[i].>8)
+            x,y,z = plot_simplex_3d(i, tree)
+            plot3d!(x, y, z, label="Points", size=(800, 800))
+        end
+    end
 
-    # scatter3d!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], [z for z in map(x -> x.position[3], test_points)], label="Points", c=distinguishable_colors(n))
-
-    # center, R = circumsphere(1, tree)
-    # surface!(sphere(center, R), color=:red, alpha=0.3)
-    # check_delaunay(tree, n_dims=3)
-    return tree#, p
+    p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
+    check_delaunay(tree, n_dims=3)
+    return tree, p
 end
 
 
-@timeit tmr "test2d" tree, p = test_2d(10,seed=1234)
-# @timeit tmr "test3d" tree = test_3d(50000,seed=1)
-tmr
+# @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
+@timeit tmr "test3d" tree, p = test_3d(30,seed=1)
+# tmr
 display(p)
+
+
+n = 10
+seed = 1234
+Random.seed!(seed)
+n_dims = 3
+test_points = [rand(n_dims) for i in 1:n]
+@timeit tmr "initializing tree" tree = initialize_tree_3d(test_points)
+
+for point in test_points
+    insert_point(tree, point, n_dims=n_dims)
+end
+
+x,y,z = plot_simplex_3d(1, tree)
+plot(x, y, z, label="Points", size=(800, 800))
+for i in 2:length(tree.simplices)
+    if !tree.dead[i] && all(tree.simplices[i].>6)
+        x,y,z = plot_simplex_3d(i, tree)
+        plot!(x, y, z, label="Points", size=(800, 800))
+    end
+end
+
+p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
+check_delaunay(tree, n_dims=2)
