@@ -1,8 +1,8 @@
 using Revise
 using BoundingSphere
 using LinearAlgebra
-# using Plots
-# plotlyjs()
+using Plots
+plotlyjs()
 using Random
 using TimerOutputs
 include("Primitives.jl")
@@ -10,21 +10,23 @@ using Memoize
 
 const tmr = TimerOutput()
 
-function plot_simplex_2d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
+function plot_simplex_2d(simplex_Id::Int, tree::DelaunayTree)
     x, y = [], []
+    vertices = tree.vertices[tree.simplices[simplex_Id]]
     for vertex_id in [1,2,3,1]
-        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
-        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
+        push!(x, vertices[vertex_id][1])
+        push!(y, vertices[vertex_id][2])
     end
     return x, y
 end
 
-function plot_simplex_3d(simplex::DelaunayTreeNode, vertices::Dict{Int, Vertex})
+function plot_simplex_3d(simplex_Id::Int, tree::DelaunayTree)
     x, y, z = [], [], []
+    vertices = tree.vertices[tree.simplices[simplex_Id]]
     for vertex_id in [1,2,3,1,4,3,2,4]
-        push!(x, vertices[simplex.vertices[vertex_id]].position[1])
-        push!(y, vertices[simplex.vertices[vertex_id]].position[2])
-        push!(z, vertices[simplex.vertices[vertex_id]].position[3])
+        push!(x, vertices[vertex_id][1])
+        push!(y, vertices[vertex_id][2])
+        push!(z, vertices[vertex_id][3])
     end
     return x, y, z
 end
@@ -91,7 +93,7 @@ end
         # Radius of the circumcircle
         R = sqrt((X - x1)^2 + (Y - y1)^2)
 
-        return ((X, Y), R)
+        return ([X, Y], R)
     elseif n_dims == 3
         v1 = vertices[1]
         v2 = vertices[2]
@@ -143,7 +145,7 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     ghost_vertex = [center + [0, 0, radius], center + [0, 0, radius], center + [0, 0, radius], center + [radius  * cos(0), radius * sin(0), -radius]]
     verticies = [first_vertex, second_vertex, third_vertex, fourth_vertex, ghost_vertex...]
 
-    id = [-7, -6, -5, -4, -3, -2, -1, 0]
+    id = [1, 2, 3, 4, 5, 6, 7, 8]
     simplicies = [[1, 2, 3, 4], [5, 1, 2, 3], [6, 1, 3, 4], [7, 1, 4, 2], [8, 2, 3, 4]]
     dead = [false, false, false, false, false]
     centers = [center, [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
@@ -151,7 +153,7 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
 
     parent_relation = [1, 2, 3, 4, 5]
     children_relation= Vector{Vector{Int}}([[],[],[],[],[]])
-    step_children_relation = [Pair([],[]),Pair([],[]),Pair([],[]),Pair([],[]),Pair([],[])]
+    step_children_relation = [Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}()]
     neighbors_relation = [[2, 3, 4, 5], [1], [1], [1], [1]]
     return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, verticies)
 end
@@ -165,7 +167,7 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     ghost_vertex = [center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)], center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)], center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)]]
     verticies = [first_vertex, second_vertex, third_vertex, ghost_vertex...]
 
-    id = [-5, -4, -3, -2, -1, 0]
+    id = [1, 2, 3, 4, 5, 6]
     simplicies = [[1, 2, 3], [4, 1, 2], [6, 1, 3], [5, 2, 3]]
     dead = [false, false, false, false]
     centers = [center, [0, 0], [0, 0], [0, 0]]
@@ -173,7 +175,7 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
 
     parent_relation = [1, 2, 3, 4]
     children_relation= Vector{Vector{Int}}([[],[],[],[]])
-    step_children_relation = [Pair([],[]),Pair([],[]),Pair([],[]),Pair([],[])]
+    step_children_relation = [Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}()]
     neighbors_relation = [[2, 3, 4], [1], [1], [1]]
     return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, verticies)
 end
@@ -182,7 +184,7 @@ function in_sphere(node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Bo
     return norm(point .- tree.centers[node_id]) < tree.radii[node_id]
 end
 
-function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vector{Int}, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
+function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vector{Float64}, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
     if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree)
         if !tree.dead[current_node_id]
             push!(output, current_node_id)
@@ -240,45 +242,46 @@ function common_facet(simplex1::Vector{Int}, simplex2::Vector{Int}; n_dims::Int 
     end
 end
 
-function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
+function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
     @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
     # println("killed_nodes: ", filter(x->tree.simplices[x].dead==false, killed_nodes))
     new_node_id = Vector{Int}()
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
-        if !tree.dead[node_id].dead
-            tree.dead[node_id].dead = true
+        if !tree.dead[node_id]
+            tree.dead[node_id] = true
             for neighbor_id in tree.neighbors_relation[node_id]
                 # println(in_sphere(neighbor_id, point, tree, n_dims=n_dims))
                 @timeit tmr "in sphere" if !in_sphere(neighbor_id, point, tree)
                     # println("neighbor_id: ", neighbor_id)
-                    @timeit tmr "check facet" facet = common_facet(tree.vertices[tree.simplices[node_id]], tree.vertices[tree.simplices[neighbor_id]], n_dims=n_dims)
+                    @timeit tmr "check facet" facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
                     if length(facet) == n_dims
                         # Creating new node
-                        new_id = tree.id[end] + 1
+                        new_id = length(tree.simplices) + 1
                         push!(tree.id, new_id)
-                        push!(tree.simplices, [point.id, facet...])
+                        push!(new_node_id, new_id)
+                        push!(tree.simplices, [length(tree.vertices)+1, facet...])
                         push!(tree.dead, false)
-                        center, radius = circumsphere([point.position, map(x->tree.vertices[x].position, facet)...], n_dims=n_dims)
+                        center, radius = circumsphere([point, tree.vertices[facet]...], n_dims=n_dims)
                         push!(tree.centers, center)
                         push!(tree.radii, radius)
 
                         push!(tree.parent_relation, node_id)
                         push!(tree.children_relation, Vector{Int}())
-                        push!(tree.step_children_relation, Vector{Pair(Vector{Int}, Vector{Int})}())
+                        push!(tree.step_children_relation, Dict{Vector{Int}, Vector{Int}}())
                         push!(tree.neighbors_relation, [neighbor_id])
 
                         # Updating parent relationship
-                        push!(tree.children_relation[node_id],new_node.id)
+                        push!(tree.children_relation[node_id],new_id)
                         if haskey(tree.step_children_relation[neighbor_id], facet)
-                            push!(tree.step_children_relation[neighbor_id][facet], new_node.id)
+                            push!(tree.step_children_relation[neighbor_id][facet], new_id)
                         else
-                            tree.step_children_relation[neighbor_id][facet] = [new_node.id]
+                            tree.step_children_relation[neighbor_id][facet] = [new_id]
                         end
 
                         # Updating neighbor relationship for the neighbor of the killed node
                         killed_node_id = findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])
                         if killed_node_id !== nothing
-                            tree.neighbors_relation[neighbor_id][killed_node_id] = new_node.id
+                            tree.neighbors_relation[neighbor_id][killed_node_id] = new_id
                         end
                     end
                 end
@@ -291,22 +294,32 @@ function insert_point(tree::DelaunayTree, point::Vertex; n_dims::Int=3)
         for j in i+1:length(new_node_id)
             new_id1 = new_node_id[i]
             new_id2 = new_node_id[j]
-            facet = common_facet(tree.vertices[tree.simplices[new_id1]], tree.vertices[tree.simplices[new_id2]], n_dims=n_dims)
+            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2], n_dims=n_dims)
             if length(facet) == n_dims
                 push!(tree.neighbors_relation[new_id1], new_id2)
                 push!(tree.neighbors_relation[new_id2], new_id1)
             end
         end
     end
-    tree.vertices[point.id] = point
+    push!(tree.vertices,point)
 end
 
 function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
-    for i in keys(tree.simplices)
-        if !tree.simplices[i].dead
-            for j in keys(tree.vertices)
-                if j > 0
-                    if in_sphere(i, tree.vertices[j], tree) && j ∉ tree.simplices[i].vertices && all(tree.simplices[i].vertices.>0)
+    if n_dims==3
+        for i in 1:length(tree.simplices)
+            if !tree.dead[i]
+                for j in tree.vertices
+                    if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>8)
+                        println("Error, point ", j, " is inside the circumcircle of simplex ", i)
+                    end
+                end
+            end
+        end
+    elseif n_dims==2
+        for i in 1:length(tree.simplices)
+            if !tree.dead[i]
+                for j in tree.vertices
+                    if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>6)
                         println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                     end
                 end
@@ -318,24 +331,23 @@ end
 function test_2d(n::Int; seed::Int)
     Random.seed!(seed)
     n_dims = 2
-    test_points = initialize_vertex(n, n_dims=n_dims)
+    test_points = [rand(n_dims) for i in 1:n]
     @timeit tmr "initializing tree" tree = initialize_tree_2d(test_points)
     
     for point in test_points
         insert_point(tree, point, n_dims=n_dims)
     end
     
-    # x,y = plot_simplex_2d(tree.simplices[1], tree.vertices)
-    # plot(x, y, label="Points", size=(800, 800))
-    # for i in 2:length(tree.simplices)
-    #     if !tree.simplices[i].dead && all(tree.simplices[i].vertices.>0)
-    #         x,y = plot_simplex_2d(tree.simplices[i], tree.vertices)
-    #         plot!(x, y, label="Points", size=(800, 800))
-    #     end
-    # end
+    x,y = plot_simplex_2d(1, tree)
+    plot(x, y, label="Points", size=(800, 800))
+    for i in 2:length(tree.simplices)
+        if !tree.dead[i] && all(tree.simplices[i].>6)
+            x,y = plot_simplex_2d(i, tree)
+            plot!(x, y, label="Points", size=(800, 800))
+        end
+    end
     
-    # p = scatter!([x for x in map(x -> x.position[1], test_points)], [y for y in map(x -> x.position[2], test_points)], label="Points", color=["red","blue","green", "yellow", "black"])
-    
+    p = scatter!(map(x -> x[1], test_points), map(x -> x[2], test_points), label="Points", c=distinguishable_colors(n)) 
     check_delaunay(tree, n_dims=2)
 
     return tree, p
@@ -345,7 +357,7 @@ end
 function test_3d(n::Int; seed::Int)
     Random.seed!(seed)
     n_dims = 3
-    @timeit tmr "initializing points" test_points = initialize_vertex(n, n_dims=n_dims)
+    @timeit tmr "initializing points" test_points = [rand(n_dims) for i in 1:n]
     @timeit tmr "initializing tree" tree = initialize_tree_3d(test_points)
 
     for point in test_points
@@ -370,7 +382,7 @@ function test_3d(n::Int; seed::Int)
 end
 
 
-# @timeit tmr "test2d" tree, p = test_2d(10,seed=1234)
-@timeit tmr "test3d" tree = test_3d(50,seed=1)
+@timeit tmr "test2d" tree, p = test_2d(10,seed=1234)
+# @timeit tmr "test3d" tree = test_3d(50000,seed=1)
 tmr
-# display(p)
+display(p)
