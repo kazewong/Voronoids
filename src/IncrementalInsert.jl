@@ -383,14 +383,14 @@ end
 display(p)
 
 
-n = 10
-seed = 1234
+n = 30
+seed = 1
 Random.seed!(seed)
 n_dims = 3
 test_points = [rand(n_dims) for i in 1:n]
 @timeit tmr "initializing tree" tree = initialize_tree_3d(test_points)
 
-for point in test_points
+for point in test_points[1:5]
     insert_point(tree, point, n_dims=n_dims)
 end
 
@@ -403,5 +403,5 @@ for i in 2:length(tree.simplices)
     end
 end
 
-p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
+p = scatter3d!(map(x -> x[1], test_points[1:5]), map(x -> x[2], test_points[1:5]), map(x -> x[3], test_points[1:5]), label="Points", c=distinguishable_colors(n))
 check_delaunay(tree, n_dims=2)
