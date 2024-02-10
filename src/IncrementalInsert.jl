@@ -1,8 +1,8 @@
 using Revise
 using BoundingSphere
 using LinearAlgebra
-using Plots
-plotlyjs()
+# using Plots
+# plotlyjs()
 using Random
 using TimerOutputs
 include("Primitives.jl")
@@ -133,52 +133,49 @@ end
     end
 end
 
-function initialize_tree_3d(points::Vector{Vertex})::DelaunayTree
-    positions = map(x -> x.position, points)
+function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     center, radius = boundingsphere(positions)
     radius = radius*5
-    first_vertex = Vertex(-8, center + [0, 0, radius])
-    second_vertex = Vertex(-7, center + [radius * cos(0), radius * sin(0), -radius ])
-    third_vertex = Vertex(-6, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3), -radius])
-    fourth_vertex = Vertex(-5, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3), -radius])
-    ghost_vertex = [Vertex(-4, center + [0, 0, radius]), Vertex(-3, center + [0, 0, radius]), Vertex(-2, center + [0, 0, radius]), Vertex(-1, center + [radius  * cos(0), radius * sin(0), -radius])]
+    first_vertex = center + [0, 0, radius]
+    second_vertex = center + [radius * cos(0), radius * sin(0), -radius ]
+    third_vertex = center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3), -radius]
+    fourth_vertex = center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3), -radius]
+    ghost_vertex = [center + [0, 0, radius], center + [0, 0, radius], center + [0, 0, radius], center + [radius  * cos(0), radius * sin(0), -radius]]
     verticies = [first_vertex, second_vertex, third_vertex, fourth_vertex, ghost_vertex...]
-    verticies = Dict(map(x -> x.id => x, verticies))
-    node = DelaunayTreeNode(1, false, [-8, -7, -6, -5], center, radius)
-    unbounded_node = Vector{DelaunayTreeNode}()
-    push!(unbounded_node, DelaunayTreeNode(2, false, [-4, -8, -7, -6], [0, 0, 0], 0))
-    push!(unbounded_node, DelaunayTreeNode(3, false, [-3, -8, -6, -5], [0, 0, 0], 0))
-    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -8, -5, -7], [0, 0, 0], 0))
-    push!(unbounded_node, DelaunayTreeNode(5, false, [-1, -7, -6, -5], [0, 0, 0], 0))
-    nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3], 5 => unbounded_node[4])
-    parent_relation = Dict(1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5)
-    children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [], 5 => [])
-    step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}(), 5 => Dict{Vector{Int},Vector{Int}}())
-    neighbors_relation = Dict(1 => [2, 3, 4, 5], 2 => [1], 3 => [1], 4 => [1], 5 => [1])
-    return DelaunayTree(verticies, nodes, parent_relation, children_relation, step_children_relation, neighbors_relation)
+
+    id = [-8, -7, -6, -5, -4, -3, -2, -1]
+    simplicies = [[1, 2, 3, 4], [5, 1, 2, 3], [6, 1, 3, 4], [7, 1, 4, 2], [8, 2, 3, 4]]
+    dead = [false, false, false, false, false]
+    centers = [center, [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+    radii = [radius, 0, 0, 0, 0]
+
+    parent_relation = [1, 2, 3, 4, 5]
+    children_relation= Vector{Vector{Int}}([[],[],[],[],[]])
+    step_children_relation = [Pair([],[]),Pair([],[]),Pair([],[]),Pair([],[]),Pair([],[])]
+    neighbors_relation = [[2, 3, 4, 5], [1], [1], [1], [1]]
+    return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, verticies)
 end
 
-function initialize_tree_2d(points::Vector{Vertex})::DelaunayTree
-    positions = map(x -> x.position, points)
+function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     center, radius = boundingsphere(positions)
     radius = radius*3
-    first_vertex = Vertex(-6, center + [radius * cos(0* pi / 3), radius * sin(0 * pi / 3)])
-    second_vertex = Vertex(-5, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)])
-    third_vertex = Vertex(-4, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)])
-    ghost_vertex = [Vertex(-3, center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)]), Vertex(-2, center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)]), Vertex(-1, center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)])]
+    first_vertex = center + [radius * cos(0* pi / 3), radius * sin(0 * pi / 3)]
+    second_vertex = center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)]
+    third_vertex = center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)]
+    ghost_vertex = [center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)], center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)], center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)]]
     verticies = [first_vertex, second_vertex, third_vertex, ghost_vertex...]
-    verticies = Dict(map(x -> x.id => x, verticies))
-    node = DelaunayTreeNode(1, false, [-6, -5, -4], center, radius)
-    unbounded_node = Vector{DelaunayTreeNode}()
-    push!(unbounded_node, DelaunayTreeNode(2, false, [-3, -6, -5], [0, 0], 0))
-    push!(unbounded_node, DelaunayTreeNode(3, false, [-1, -6, -4], [0, 0], 0))
-    push!(unbounded_node, DelaunayTreeNode(4, false, [-2, -5, -4], [0, 0], 0))
-    nodes = Dict(1 => node, 2 => unbounded_node[1], 3 => unbounded_node[2], 4 => unbounded_node[3])
-    parent_relation = Dict(1 => 0, 2 => 0, 3 => 0, 4 => 0)
-    children_relation = Dict(1 => [], 2 => [], 3 => [], 4 => [])
-    step_children_relation = Dict(1 => Dict{Vector{Int},Vector{Int}}(), 2 => Dict{Vector{Int},Vector{Int}}(), 3 => Dict{Vector{Int},Vector{Int}}(), 4 => Dict{Vector{Int},Vector{Int}}())
-    neighbors_relation = Dict(1 => [2, 3, 4], 2 => [1], 3 => [1], 4 => [1])
-    return DelaunayTree(verticies, nodes, parent_relation, children_relation, step_children_relation, neighbors_relation)
+
+    id = [-6, -5, -4, -3, -2, -1]
+    simplicies = [[1, 2, 3], [4, 1, 2], [6, 1, 3], [5, 2, 3]]
+    dead = [false, false, false, false]
+    centers = [center, [0, 0], [0, 0], [0, 0]]
+    radii = [radius, 0, 0, 0]
+
+    parent_relation = [1, 2, 3, 4]
+    children_relation= Vector{Vector{Int}}([[],[],[],[]])
+    step_children_relation = [Pair([],[]),Pair([],[]),Pair([],[]),Pair([],[])]
+    neighbors_relation = [[2, 3, 4], [1], [1], [1]]
+    return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, verticies)
 end
 
 function in_sphere(node_id::Int, point::Vertex, tree::DelaunayTree; n_dims::Int=3)::Bool
@@ -375,7 +372,7 @@ function test_3d(n::Int; seed::Int)
 end
 
 
-# @timeit tmr "test2d" tree, p = test_2d(100,seed=1234)
-@timeit tmr "test3d" tree = test_3d(5000,seed=1)
+# @timeit tmr "test2d" tree, p = test_2d(10,seed=1234)
+@timeit tmr "test3d" tree = test_3d(50,seed=1)
 tmr
 # display(p)

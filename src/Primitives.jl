@@ -18,10 +18,19 @@ mutable struct DelaunayTreeNode
 end
 
 struct DelaunayTree
-    vertices::Dict{Int,Vertex}
-    simplices::Dict{Int, DelaunayTreeNode}
-    parent_relation::Dict{Int,Int}
-    children_relation::Dict{Int,Vector{Int}}
-    step_children_relation::Dict{Int,Dict{Vector{Int},Vector{Int}}}
-    neighbors_relation::Dict{Int,Vector{Int}}
+    id::Vector{Int}
+    simplices::Vector{Vector{Int}}
+    dead::Vector{Bool}
+    centers::Vector{Vector{Float64}}
+    radii::Vector{Float64}
+    parent_relation::Vector{Int}
+    children_relation::Vector{Vector{Int}}
+    step_children_relation::Vector{Pair{Vector{Int},Vector{Int}}}
+    neighbors_relation::Vector{Vector{Int}}
+
+    vertices::Vector{Vector{Float64}}
+
+    # simplices::Dict{Int, DelaunayTreeNode}
+
+    # step_children_relation::Dict{Int,Dict{Vector{Int},Vector{Int}}}
 end
