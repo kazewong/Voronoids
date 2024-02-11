@@ -217,7 +217,6 @@ end
 
 function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
     @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
-    println("killed_nodes: ", killed_nodes)
     new_node_id = Vector{Int}()
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
         if !tree.dead[node_id]
@@ -225,7 +224,6 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
             for neighbor_id in tree.neighbors_relation[node_id]
                 if !in_sphere(neighbor_id, point, tree)
                     facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
-                    println("facet: ", facet)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
@@ -336,47 +334,22 @@ function test_3d(n::Int; seed::Int)
         @timeit tmr "insert_point" insert_point(tree, point, n_dims=n_dims)
     end
 
-    x,y,z = plot_simplex_3d(1, tree)
-    plot3d(x, y, z, label="Points", size=(800, 800))
-    for i in 2:length(tree.simplices)
-        if !tree.dead[i] && all(tree.simplices[i].>8)
-            x,y,z = plot_simplex_3d(i, tree)
-            plot3d!(x, y, z, label="Points", size=(800, 800))
-        end
-    end
+    # x,y,z = plot_simplex_3d(1, tree)
+    # plot3d(x, y, z, label="Points", size=(800, 800))
+    # for i in 2:length(tree.simplices)
+    #     if !tree.dead[i] && all(tree.simplices[i].>8)
+    #         x,y,z = plot_simplex_3d(i, tree)
+    #         plot3d!(x, y, z, label="Points", size=(800, 800))
+    #     end
+    # end
 
-    p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
-    check_delaunay(tree, n_dims=3)
+    # p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
+    # check_delaunay(tree, n_dims=3)
     return tree, p
 end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree, p = test_3d(30,seed=1)
+@timeit tmr "test3d" tree, p = test_3d(50000,seed=1)
 # tmr
 display(p)
-
-
-n = 30
-seed = 1
-Random.seed!(seed)
-n_dims = 3
-test_points = [rand(n_dims) for i in 1:n]
-@timeit tmr "initializing tree" tree = initialize_tree_3d(test_points)
-
-for point in test_points[1:5]
-    insert_point(tree, point, n_dims=n_dims)
-end
-
-x,y,z = plot_simplex_3d(1, tree)
-plot(x, y, z, label="Points", size=(800, 800))
-for i in 2:length(tree.simplices)
-    if !tree.dead[i] #&& all(tree.simplices[i].>6)
-        x,y,z = plot_simplex_3d(i, tree)
-        plot!(x, y, z, label="Points", size=(800, 800))
-    end
-end
-
-p = scatter3d!(map(x -> x[1], test_points[1:5]), map(x -> x[2], test_points[1:5]), map(x -> x[3], test_points[1:5]), label="Points", c=distinguishable_colors(n))
-surface!(sphere(tree.centers[20], tree.radii[20]), color=:red, alpha=0.3)
-check_delaunay(tree, n_dims=2)
