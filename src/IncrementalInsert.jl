@@ -41,33 +41,6 @@ function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
     return x, y, z
 end
 
-@memoize function circumcircle(vectices::Vector{Vector{Float64}})
-    x1, y1 = vertices[1]
-    x2, y2 = vertices[2]
-    x3, y3 = vertices[3]
-
-    # Midpoints of AB and BC
-    D = ((x1 + x2) / 2, (y1 + y2) / 2)
-    E = ((x2 + x3) / 2, (y2 + y3) / 2)
-
-    # Slopes of AB and BC
-    mAB = (y2 - y1) / (x2 - x1)
-    mBC = (y3 - y2) / (x3 - x2)
-
-    # Slopes of perpendicular bisectors
-    mD = -1 / mAB
-    mE = -1 / mBC
-
-    # Calculating the circumcenter (X, Y)
-    X = (mD * D[1] - mE * E[1] + E[2] - D[2]) / (mD - mE)
-    Y = mD * (X - D[1]) + D[2]
-
-    # Radius of the circumcircle
-    R = sqrt((X - x1)^2 + (Y - y1)^2)
-
-    return ((X, Y), R)
-end
-
 @memoize function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
     if n_dims == 2
         x1, y1 = vertices[1]
@@ -186,9 +159,9 @@ end
 
 function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vector{Float64}, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
     if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree)
+        push!(visited_ids, current_node_id)
         if !tree.dead[current_node_id]
             push!(output, current_node_id)
-            return output
         end
         childrens = tree.children_relation[current_node_id]
         for child_id in childrens
@@ -244,7 +217,7 @@ end
 
 function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
     @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
-    # println("killed_nodes: ", killed_nodes)
+    println("killed_nodes: ", killed_nodes)
     new_node_id = Vector{Int}()
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
         if !tree.dead[node_id]
@@ -252,6 +225,7 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
             for neighbor_id in tree.neighbors_relation[node_id]
                 if !in_sphere(neighbor_id, point, tree)
                     facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
+                    println("facet: ", facet)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
@@ -397,11 +371,12 @@ end
 x,y,z = plot_simplex_3d(1, tree)
 plot(x, y, z, label="Points", size=(800, 800))
 for i in 2:length(tree.simplices)
-    if !tree.dead[i] && all(tree.simplices[i].>6)
+    if !tree.dead[i] #&& all(tree.simplices[i].>6)
         x,y,z = plot_simplex_3d(i, tree)
         plot!(x, y, z, label="Points", size=(800, 800))
     end
 end
 
 p = scatter3d!(map(x -> x[1], test_points[1:5]), map(x -> x[2], test_points[1:5]), map(x -> x[3], test_points[1:5]), label="Points", c=distinguishable_colors(n))
+surface!(sphere(tree.centers[20], tree.radii[20]), color=:red, alpha=0.3)
 check_delaunay(tree, n_dims=2)
