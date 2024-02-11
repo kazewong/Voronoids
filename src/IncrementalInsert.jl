@@ -231,7 +231,7 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
                         push!(new_node_id, new_id)
                         push!(tree.simplices, [length(tree.vertices)+1, facet...])
                         push!(tree.dead, false)
-                        center, radius = circumsphere([point, tree.vertices[facet]...], n_dims=n_dims)
+                        @timeit tmr "circumsphere" center, radius = circumsphere([point, tree.vertices[facet]...], n_dims=n_dims)
                         push!(tree.centers, center)
                         push!(tree.radii, radius)
 
@@ -350,6 +350,6 @@ end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree, p = test_3d(50000,seed=1)
-# tmr
+@timeit tmr "test3d" tree, p = test_3d(100000,seed=1)
+tmr
 display(p)
