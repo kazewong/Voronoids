@@ -345,7 +345,7 @@ function test_3d(n::Int; seed::Int)
 
     # p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
     # check_delaunay(tree, n_dims=3)
-    return tree, p
+    return tree
 end
 
 
