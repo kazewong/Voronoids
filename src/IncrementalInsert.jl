@@ -1,8 +1,8 @@
 using Revise
 using BoundingSphere
 using LinearAlgebra
-using Plots
-plotlyjs()
+# using Plots
+# plotlyjs()
 using Random
 using TimerOutputs
 include("Primitives.jl")
@@ -77,32 +77,35 @@ end
             return ((0, 0, 0), 0)
         end
 
+        length_column = [
+            v1[1]^2 + v1[2]^2 + v1[3]^2;
+            v2[1]^2 + v2[2]^2 + v2[3]^2;
+            v3[1]^2 + v3[2]^2 + v3[3]^2;
+            v4[1]^2 + v4[2]^2 + v4[3]^2;
+        ]
+
         a = det([v1[1] v1[2] v1[3] 1;
             v2[1] v2[2] v2[3] 1;
             v3[1] v3[2] v3[3] 1;
             v4[1] v4[2] v4[3] 1])
 
-        Dx = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[2] v1[3] 1;
-            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[2] v2[3] 1;
-            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[2] v3[3] 1;
-            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[2] v4[3] 1])
+        Dx = det([length_column[1] v1[2] v1[3] 1;
+            length_column[2] v2[2] v2[3] 1;
+            length_column[3] v3[2] v3[3] 1;
+            length_column[4] v4[2] v4[3] 1])
 
-        Dy = - det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[3] 1;
-            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[3] 1;
-            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[3] 1;
-            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[3] 1])
+        Dy = - det([length_column[1] v1[1] v1[3] 1;
+            length_column[2] v2[1] v2[3] 1;
+            length_column[3] v3[1] v3[3] 1;
+            length_column[4] v4[1] v4[3] 1])
 
-        Dz = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] 1;
-            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] 1;
-            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] 1;
-            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] 1])
+        Dz = det([length_column[1] v1[1] v1[2] 1;
+            length_column[2] v2[1] v2[2] 1;
+            length_column[3] v3[1] v3[2] 1;
+            length_column[4] v4[1] v4[2] 1])
 
-        c = det([v1[1]^2 + v1[2]^2 + v1[3]^2 v1[1] v1[2] v1[3];
-            v2[1]^2 + v2[2]^2 + v2[3]^2 v2[1] v2[2] v2[3];
-            v3[1]^2 + v3[2]^2 + v3[3]^2 v3[1] v3[2] v3[3];
-            v4[1]^2 + v4[2]^2 + v4[3]^2 v4[1] v4[2] v4[3]])
-
-        radius = sqrt(Dx^2 + Dy^2 + Dz^2 - 4*a*c) / (2*abs(a))
+        center = [Dx/2/a, Dy/2/a, Dz/2/a]
+        radius = sqrt((v1[1]-center[1])^2 + (v1[2]-center[2])^2 + (v1[3]-center[3])^2)
 
         return ([Dx/2/a,Dy/2/a,Dz/2/a], radius) # Return the center coordinates and the radius
     end
@@ -278,8 +281,8 @@ function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
     if n_dims==3
         for i in 1:length(tree.simplices)
             if !tree.dead[i]
-                for j in tree.vertices
-                    if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] #&& all(tree.simplices[i].>8)
+                for j in 1:length(tree.vertices)
+                    if in_sphere(i, tree.vertices[j], tree) && tree.vertices[j] ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>8)
                         println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                     end
                 end
@@ -344,12 +347,12 @@ function test_3d(n::Int; seed::Int)
     # end
 
     # p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
-    # check_delaunay(tree, n_dims=3)
+    check_delaunay(tree, n_dims=3)
     return tree
 end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree, p = test_3d(100000,seed=1)
+@timeit tmr "test3d" tree = test_3d(10,seed=1)
 tmr
 display(p)
