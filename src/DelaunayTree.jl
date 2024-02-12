@@ -1,4 +1,5 @@
 using AdaptiveKDTrees.KNN
+using BoundingSphere
 
 mutable struct DelaunayTree
     vertices::Vector{Vector{Float64}}

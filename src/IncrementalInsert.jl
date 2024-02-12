@@ -1,5 +1,3 @@
-using Revise
-using BoundingSphere
 using LinearAlgebra
 
 function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
@@ -122,14 +120,3 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
 end
 
 export check_delaunay, in_sphere, find_all_neighbors, find_nearest_simplex, locate, common_facet, insert_point
-# function parallel_locate(tree::DelaunayTree, points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)::Vector{Vector{Int}}
-#     Threads.@threads for point in points
-#         locate(Vector{Int}(), point, tree, n_dims=n_dims)
-#     end
-# end
-
-# function parallelInsert(tree::DelaunayTree, points::Vector{Vector{Float64}})
-#     # for point in points
-#     #     insert_point(tree, point, n_dims=3)
-#     # end
-# end
