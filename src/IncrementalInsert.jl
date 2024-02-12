@@ -41,7 +41,7 @@ function sphere(C, r)   # r: radius; C: center [cx,cy,cz]
     return x, y, z
 end
 
-@memoize function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
+@timeit tmr "circumsphere" function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
     if n_dims == 2
         x1, y1 = vertices[1]
         x2, y2 = vertices[2]
@@ -77,35 +77,35 @@ end
             return ((0, 0, 0), 0)
         end
 
-        length_column = [
+        @timeit tmr "make column" length_column = [
             v1[1]^2 + v1[2]^2 + v1[3]^2;
             v2[1]^2 + v2[2]^2 + v2[3]^2;
             v3[1]^2 + v3[2]^2 + v3[3]^2;
             v4[1]^2 + v4[2]^2 + v4[3]^2;
         ]
 
-        a = det([v1[1] v1[2] v1[3] 1;
+        @timeit tmr "make a" a = det([v1[1] v1[2] v1[3] 1;
             v2[1] v2[2] v2[3] 1;
             v3[1] v3[2] v3[3] 1;
             v4[1] v4[2] v4[3] 1])
 
-        Dx = det([length_column[1] v1[2] v1[3] 1;
+        @timeit tmr "make Dx" Dx = det([length_column[1] v1[2] v1[3] 1;
             length_column[2] v2[2] v2[3] 1;
             length_column[3] v3[2] v3[3] 1;
             length_column[4] v4[2] v4[3] 1])
 
-        Dy = - det([length_column[1] v1[1] v1[3] 1;
+        @timeit tmr "make Dy" Dy = - det([length_column[1] v1[1] v1[3] 1;
             length_column[2] v2[1] v2[3] 1;
             length_column[3] v3[1] v3[3] 1;
             length_column[4] v4[1] v4[3] 1])
 
-        Dz = det([length_column[1] v1[1] v1[2] 1;
+        @timeit tmr "make Dz" Dz = det([length_column[1] v1[1] v1[2] 1;
             length_column[2] v2[1] v2[2] 1;
             length_column[3] v3[1] v3[2] 1;
             length_column[4] v4[1] v4[2] 1])
 
-        center = [Dx/2/a, Dy/2/a, Dz/2/a]
-        radius = sqrt((v1[1]-center[1])^2 + (v1[2]-center[2])^2 + (v1[3]-center[3])^2)
+        @timeit tmr "make center" center = [Dx/2/a, Dy/2/a, Dz/2/a]
+        @timeit tmr "make radius" radius = sqrt((v1[1]-center[1])^2 + (v1[2]-center[2])^2 + (v1[3]-center[3])^2)
 
         return ([Dx/2/a,Dy/2/a,Dz/2/a], radius) # Return the center coordinates and the radius
     end
