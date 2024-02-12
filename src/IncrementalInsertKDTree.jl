@@ -307,23 +307,23 @@ function test_3d(n::Int; seed::Int)
         @timeit tmr "insert_point" insert_point(tree, point, n_dims=n_dims)
     end
 
-    x,y,z = plot_simplex_3d(1, tree)
-    plot3d(x, y, z, label="Points", size=(800, 800))
-    for i in 2:length(tree.simplices)
-        if !tree.dead[i] && all(tree.simplices[i].>8)
-            x,y,z = plot_simplex_3d(i, tree)
-            plot3d!(x, y, z, label="Points", size=(800, 800))
-        end
-    end
+    # x,y,z = plot_simplex_3d(1, tree)
+    # plot3d(x, y, z, label="Points", size=(800, 800))
+    # for i in 2:length(tree.simplices)
+    #     if !tree.dead[i] && all(tree.simplices[i].>8)
+    #         x,y,z = plot_simplex_3d(i, tree)
+    #         plot3d!(x, y, z, label="Points", size=(800, 800))
+    #     end
+    # end
 
-    p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
+    # p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
     check_delaunay(tree, n_dims=3)
-    return tree,p
+    return tree
 end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree,p = test_3d(5,seed=1)
+@timeit tmr "test3d" tree = test_3d(100,seed=1)
 tmr
 display(p)
 function parallelInsert(tree::DelaunayTree, points::Vector{Vector{Float64}})
