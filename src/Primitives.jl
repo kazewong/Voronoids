@@ -1,5 +1,4 @@
-using NearestNeighbors
-
+using AdaptiveKDTrees.KNN
 struct Vertex
     id::Int
     position::Vector{Float64}
@@ -35,3 +34,13 @@ mutable struct DelaunayTree
     # step_children_relation::Dict{Int,Dict{Vector{Int},Vector{Int}}}
 end
 
+mutable struct KDDelaunayTree
+    vertices::Vector{Vector{Float64}}
+    dead::Vector{Bool}
+    kdtree::KDTree
+    simplices::Vector{Vector{Int}}
+    vertices_simplex::Vector{Vector{Int}}
+    centers::Vector{Vector{Float64}}
+    radii::Vector{Float64}
+    neighbors_relation::Vector{Vector{Int}}
+end
