@@ -183,21 +183,6 @@ function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vector{Fl
     end
 end
 
-function locate(vertex::Vertex, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
-    alive_point_id = map(x->x.id, filter(x->!x.dead, collect(values(tree.simplices))))
-    insphere = false
-    node_id = 1
-    while !insphere
-        if in_sphere(alive_point_id[node_id], vertex, tree)
-            insphere = true
-            break
-        else
-            node_id += 1
-        end
-    end
-    return find_all_neighbors(Vector{Int}(), alive_point_id[node_id], vertex, tree, n_dims=n_dims)
-end
-
 function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tree::DelaunayTree; n_dims=3)::Vector{Int}
     neighbors = tree.neighbors_relation[node_id]
     for neighbor_id in neighbors
@@ -347,12 +332,17 @@ function test_3d(n::Int; seed::Int)
     # end
 
     # p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
-    check_delaunay(tree, n_dims=3)
+    # check_delaunay(tree, n_dims=3)
     return tree
 end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree = test_3d(10,seed=1)
+@timeit tmr "test3d" tree = test_3d(10000,seed=1)
 tmr
-display(p)
+
+function parallelInsert(tree::DelaunayTree, points::Vector{Vector{Float64}})
+    # for point in points
+    #     insert_point(tree, point, n_dims=3)
+    # end
+end
