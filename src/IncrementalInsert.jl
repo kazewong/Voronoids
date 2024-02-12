@@ -338,7 +338,7 @@ end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree = test_3d(300000,seed=1)
+@timeit tmr "test3d" tree = test_3d(100000,seed=1)
 tmr
 
 function parallelInsert(tree::DelaunayTree, points::Vector{Vector{Float64}})

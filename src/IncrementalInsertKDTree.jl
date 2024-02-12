@@ -1,8 +1,8 @@
 using Revise
 using BoundingSphere
 using LinearAlgebra
-using Plots
-plotlyjs()
+# using Plots
+# plotlyjs()
 using Random
 using TimerOutputs
 include("Primitives.jl")
@@ -317,15 +317,21 @@ function test_3d(n::Int; seed::Int)
     # end
 
     # p = scatter3d!(map(x -> x[1], test_points), map(x -> x[2], test_points), map(x -> x[3], test_points), label="Points", c=distinguishable_colors(n))
-    check_delaunay(tree, n_dims=3)
+    # check_delaunay(tree, n_dims=3)
     return tree
 end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree = test_3d(100,seed=1)
-tmr
-display(p)
+# @timeit tmr "test3d" tree = test_3d(500000,seed=1)
+# tmr
+
+function parallel_locate(tree::KDDelaunayTree, points::Vector{Vector{Float64}}, tree::KDDelaunayTree; n_dims::Int=3)::Vector{Vector{Int}}
+    Threads.@threads for point in points
+        locate(Vector{Int}(), point, tree, n_dims=n_dims)
+    end
+end
+
 function parallelInsert(tree::DelaunayTree, points::Vector{Vector{Float64}})
     # for point in points
     #     insert_point(tree, point, n_dims=3)
