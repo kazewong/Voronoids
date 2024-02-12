@@ -20,7 +20,7 @@ function plot_simplex_2d(simplex_Id::Int, tree::DelaunayTree)
     return x, y
 end
 
-function plot_simplex_3d(simplex_Id::Int, tree::DelaunayTree)
+function plot_simplex_3d(simplex_Id::Int, tree::KDDelaunayTree)
     x, y, z = [], [], []
     vertices = tree.vertices[tree.simplices[simplex_Id]]
     for vertex_id in [1,2,3,1,4,3,2,4]
@@ -111,7 +111,7 @@ end
     end
 end
 
-function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
+function initialize_tree_3d(positions::Vector{Vector{Float64}})::KDDelaunayTree
     center, radius = boundingsphere(positions)
     radius = radius*5
     first_vertex = center + [0, 0, radius]
@@ -121,17 +121,16 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     ghost_vertex = [center + [0, 0, radius], center + [0, 0, radius], center + [0, 0, radius], center + [radius  * cos(0), radius * sin(0), -radius]]
     vertices = [first_vertex, second_vertex, third_vertex, fourth_vertex, ghost_vertex...]
 
-    id = [1, 2, 3, 4, 5, 6, 7, 8]
     simplicies = [[1, 2, 3, 4], [5, 1, 2, 3], [6, 1, 3, 4], [7, 1, 4, 2], [8, 2, 3, 4]]
-    dead = [false, false, false, false, false]
+    vertices_simplex = [[1,2,3,4], [1, 2, 4, 5], [1, 2, 3, 5], [1, 3, 4, 5], [2], [3], [4], [5]]
     centers = [center, [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
     radii = [radius, 0, 0, 0, 0]
+    dead = [false, false, false, false, false]
 
-    parent_relation = [1, 2, 3, 4, 5]
-    children_relation= Vector{Vector{Int}}([[],[],[],[],[]])
-    step_children_relation = [Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}()]
+
     neighbors_relation = [[2, 3, 4, 5], [1], [1], [1], [1]]
-    return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, vertices)
+    kd_tree = KDTree(reduce(hcat, vertices))
+    return KDDelaunayTree(vertices, dead, kd_tree, simplicies, vertices_simplex, centers, radii, neighbors_relation)
 end
 
 function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
@@ -143,47 +142,21 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     ghost_vertex = [center + [radius * cos(0 * pi / 3), radius * sin(0 * pi / 3)], center + [radius * cos(2 * pi / 3), radius * sin(2 * pi / 3)], center + [radius * cos(4 * pi / 3), radius * sin(4 * pi / 3)]]
     vertices = [first_vertex, second_vertex, third_vertex, ghost_vertex...]
 
-    id = [1, 2, 3, 4, 5, 6]
     simplicies = [[1, 2, 3], [4, 1, 2], [6, 1, 3], [5, 2, 3]]
-    dead = [false, false, false, false]
     centers = [center, [0, 0], [0, 0], [0, 0]]
     radii = [radius, 0, 0, 0]
+    dead = [false, false, false, false]
 
-    parent_relation = [1, 2, 3, 4]
-    children_relation= Vector{Vector{Int}}([[],[],[],[]])
-    step_children_relation = [Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}(),Dict{Vector{Int}, Vector{Int}}()]
     neighbors_relation = [[2, 3, 4], [1], [1], [1]]
-    return DelaunayTree(id, simplicies, dead, centers, radii, parent_relation, children_relation, step_children_relation, neighbors_relation, vertices)
+    kd_tree = KDTree(reduce(hcat, vertices))
+    return KDDelaynayTree(vertices, dead, kd_tree, simplicies, centers, radii, neighbors_relation)
 end
 
-function in_sphere(node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Bool
+function in_sphere(node_id::Int, point::Vector{Float64}, tree::KDDelaunayTree)::Bool
     return norm(point .- tree.centers[node_id]) < tree.radii[node_id]
 end
 
-function locate(visited_ids::Vector{Int}, output::Vector{Int}, vertex::Vector{Float64}, current_node_id::Int, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
-    if current_node_id ∉ visited_ids && in_sphere(current_node_id, vertex, tree)
-        push!(visited_ids, current_node_id)
-        if !tree.dead[current_node_id]
-            push!(output, current_node_id)
-        end
-        childrens = tree.children_relation[current_node_id]
-        for child_id in childrens
-            locate(visited_ids, output, vertex, child_id, tree, n_dims=n_dims)
-        end
-        step_childrens = collect(values(tree.step_children_relation[current_node_id]))
-        if length(step_childrens) > 0
-            step_childrens = vcat(step_childrens...)
-        end
-        for step_children_id in step_childrens
-            locate(visited_ids, output, vertex, step_children_id, tree, n_dims=n_dims)
-        end
-        return output
-    else
-        return output
-    end
-end
-
-function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tree::DelaunayTree; n_dims=3)::Vector{Int}
+function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vector{Float64}, tree::KDDelaunayTree; n_dims=3)::Vector{Int}
     neighbors = tree.neighbors_relation[node_id]
     for neighbor_id in neighbors
         if neighbor_id ∉ output && in_sphere(neighbor_id, point, tree)
@@ -194,6 +167,23 @@ function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vertex, tr
     return output
 end
 
+function find_nearest_simplex(point::Vector{Float64}, tree::KDDelaunayTree)::Vector{Int}
+    return tree.vertices_simplex[nn(tree.kdtree, point)[1]]
+end
+
+function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::KDDelaunayTree; n_dims::Int = 3)::Vector{Int}
+    simplex_id = find_nearest_simplex(vertex, tree)
+    simplex_id = filter(x->tree.dead[x]==false, simplex_id)
+    for id in simplex_id
+        if in_sphere(id, vertex, tree)
+            push!(output, id)
+            find_all_neighbors(output, id, vertex, tree)
+        end
+    end
+    return unique(output)
+end
+
+
 function common_facet(simplex1::Vector{Int}, simplex2::Vector{Int}; n_dims::Int = 3)::Vector{Int}
     @timeit tmr "check intersect" common = intersect(simplex1, simplex2)
     if length(common) == n_dims
@@ -203,9 +193,11 @@ function common_facet(simplex1::Vector{Int}, simplex2::Vector{Int}; n_dims::Int 
     end
 end
 
-function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
-    @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), Vector{Int}(), point, 1, tree, n_dims=n_dims)
+function insert_point(tree::KDDelaunayTree, point::Vector{Float64}; n_dims::Int=3)
+    @timeit tmr "locating node" killed_nodes = locate(Vector{Int}(), point, tree, n_dims=n_dims)
     new_node_id = Vector{Int}()
+    push!(tree.vertices_simplex, Vector{Int}())
+    vertex_id = length(tree.vertices) + 1
     @timeit tmr "insert per killed nodes" for node_id in killed_nodes
         if !tree.dead[node_id]
             tree.dead[node_id] = true
@@ -215,25 +207,17 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
                     if length(facet) == n_dims
                         # Creating new node
                         new_id = length(tree.simplices) + 1
-                        push!(tree.id, new_id)
                         push!(new_node_id, new_id)
-                        push!(tree.simplices, [length(tree.vertices)+1, facet...])
+                        push!(tree.simplices, [vertex_id, facet...])
                         push!(tree.dead, false)
                         @timeit tmr "circumsphere" center, radius = circumsphere([point, tree.vertices[facet]...], n_dims=n_dims)
                         push!(tree.centers, center)
                         push!(tree.radii, radius)
-
-                        push!(tree.parent_relation, node_id)
-                        push!(tree.children_relation, Vector{Int}())
-                        push!(tree.step_children_relation, Dict{Vector{Int}, Vector{Int}}())
                         push!(tree.neighbors_relation, [neighbor_id])
 
-                        # Updating parent relationship
-                        push!(tree.children_relation[node_id],new_id)
-                        if haskey(tree.step_children_relation[neighbor_id], facet)
-                            push!(tree.step_children_relation[neighbor_id][facet], new_id)
-                        else
-                            tree.step_children_relation[neighbor_id][facet] = [new_id]
+                        push!(tree.vertices_simplex[vertex_id], new_id)
+                        for i in facet
+                            push!(tree.vertices_simplex[i], new_id)
                         end
 
                         # Updating neighbor relationship for the neighbor of the killed node
@@ -260,9 +244,10 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
         end
     end
     push!(tree.vertices,point)
+    add_point!(tree.kdtree, point)
 end
 
-function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
+function check_delaunay(tree::KDDelaunayTree; n_dims::Int=3)
     if n_dims==3
         for i in 1:length(tree.simplices)
             if !tree.dead[i]
@@ -338,8 +323,14 @@ end
 
 
 # @timeit tmr "test2d" tree, p = test_2d(2,seed=1234)
-@timeit tmr "test3d" tree = test_3d(100000,seed=1)
-tmr
+# @timeit tmr "test3d" tree = test_3d(500000,seed=1)
+# tmr
+
+function parallel_locate(tree::KDDelaunayTree, points::Vector{Vector{Float64}}, tree::KDDelaunayTree; n_dims::Int=3)::Vector{Vector{Int}}
+    Threads.@threads for point in points
+        locate(Vector{Int}(), point, tree, n_dims=n_dims)
+    end
+end
 
 function parallelInsert(tree::DelaunayTree, points::Vector{Vector{Float64}})
     # for point in points
