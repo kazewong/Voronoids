@@ -45,8 +45,7 @@ end
 
 function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
     simplex_id = find_nearest_simplex(vertex, tree)
-    simplex_id = filter(x->tree.dead[x]==false, simplex_id)
-    for id in simplex_id
+    for id in simplex_id[tree.dead[simplex_id] .== false]
         if in_sphere(id, vertex, tree)
             push!(output, id)
             find_all_neighbors(output, id, vertex, tree)
