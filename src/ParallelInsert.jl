@@ -17,4 +17,14 @@ function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; 
     return reduce(vcat, fetch.(task))
 end
 
-export parallel_locate, batch_locate
+function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
+    site_list = parallel_locate(vertices, tree, n_dims=n_dims)
+    length_site_list = length(site_list)
+    output = Vector{Bool}(undef, length_site_list)
+    Threads.@threads for i in 1:length_site_list-1
+        output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
+    end
+    return output
+end
+
+export parallel_locate, batch_locate, identify_nonconflict_points
