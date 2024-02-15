@@ -43,7 +43,7 @@ function find_nearest_simplex(point::Vector{Float64}, tree::DelaunayTree)::Vecto
     return tree.vertices_simplex[nn(tree.kdtree, point)[1]]
 end
 
-function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree; n_dims::Int = 3)::Vector{Int}
+function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
     simplex_id = find_nearest_simplex(vertex, tree)
     for id in simplex_id[tree.dead[simplex_id] .== false]
         if in_sphere(id, vertex, tree)
@@ -65,7 +65,7 @@ function common_facet(simplex1::Vector{Int}, simplex2::Vector{Int}; n_dims::Int 
 end
 
 function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
-    killed_nodes = locate(Vector{Int}(), point, tree, n_dims=n_dims)
+    killed_nodes = locate(Vector{Int}(), point, tree)
     new_node_id = Vector{Int}()
     push!(tree.vertices_simplex, Vector{Int}())
     vertex_id = length(tree.vertices) + 1
