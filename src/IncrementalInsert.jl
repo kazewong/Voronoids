@@ -28,7 +28,7 @@ function in_sphere(node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Bo
     return norm(point .- tree.centers[node_id]) < tree.radii[node_id]
 end
 
-function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vector{Float64}, tree::DelaunayTree; n_dims=3)::Vector{Int}
+function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
     neighbors = tree.neighbors_relation[node_id]
     for neighbor_id in neighbors
         if neighbor_id ∉ output && in_sphere(neighbor_id, point, tree)
