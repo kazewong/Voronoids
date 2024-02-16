@@ -1,3 +1,4 @@
+using Revise
 using Voronoids
 using TimerOutputs
 using BenchmarkTools
@@ -20,5 +21,7 @@ end
 for i in 1:n
     insert_point(tree, test_points[i])
 end
+
+sites, index = identify_nonconflict_points(test_points2[1:256], tree)
 
 # check_delaunay(tree)
