@@ -48,7 +48,7 @@ function make_new_neighbors(simplices::Vector{Vector{Int}}; n_dims::Int=3)::Vect
     return output
 end
 
-function new_simplex2(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int, tree::DelaunayTree; n_dims::Int=3)
+function new_simplex(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int, tree::DelaunayTree; n_dims::Int=3)
     simplices = Vector{Vector{Int}}()
     centers = Vector{Vector{Float64}}()
     radii = Vector{Float64}()
@@ -82,19 +82,21 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     centers = Vector{Vector{Vector{Float64}}}(undef, length(vertices))
     radii = Vector{Vector{Float64}}(undef, length(vertices))
     neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(vertices))
+    new_neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(vertices))
     vertices_simplex = Vector{Vector{Vector{Int}}}(undef, length(vertices))
 
-
-    for i in 1:length(vertices)
+    Threads.@threads for i in 1:length(vertices)
         _simplices, _centers, _radii, _neighbors_id, _new_neighbors_id = new_simplex(sites[i], vertices[i], ids[i], tree)
         simplices[i] = _simplices
         centers[i] = _centers
         radii[i] = _radii
         neighbors_id[i] = _neighbors_id
+        new_neighbors_id[i] = _new_neighbors_id
     end
-    push!(tree.simplices, simplices...)
-    push!(tree.centers, centers...)
-    push!(tree.radii, radii...)
+    return simplices, centers, radii, neighbors_id, new_neighbors_id
+    # push!(tree.simplices, simplices...)
+    # push!(tree.centers, centers...)
+    # push!(tree.radii, radii...)
 end
 
 export parallel_locate, batch_locate!, identify_nonconflict_points, new_simplex, batch_insert_point
