@@ -115,7 +115,7 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     # Replacing neighbor relationship
     push!(tree.neighbors_relation, collect(map(x->[x[1]], neighbors_id))...)
     for i in 1:length(neighbors_id)
-        tree.neighbors_relation[neighbors_id[i][1]][tree.neighbors_relation[neighbors_id[i][1]].== neighbors_id[i][2]] = simplices_id[i]
+        tree.neighbors_relation[neighbors_id[i][1]][tree.neighbors_relation[neighbors_id[i][1]].== neighbors_id[i][2]] .= simplices_id[i]
     end
 
     for i in 1:length(new_neighbors_id)
@@ -124,6 +124,9 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
 
     # Updating vertex simplex relationship
     all_vertices = reduce(vcat, simplices)
+    for i in 1:length(vertices)
+        push!(tree.vertices_simplex, Vector{Int}())
+    end
     Threads.@threads for i in 1:length(all_vertices)
         tree.vertices_simplex[all_vertices[i]] = push!(tree.vertices_simplex[all_vertices[i]], simplices_id_repeated[i])
     end

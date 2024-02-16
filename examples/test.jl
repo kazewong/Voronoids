@@ -23,5 +23,6 @@ for i in 1:n
 end
 
 sites, index = identify_nonconflict_points(test_points2[1:256], tree)
+batch_insert_point(test_points2[1:256], tree)
 
 # check_delaunay(tree)
