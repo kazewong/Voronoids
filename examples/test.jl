@@ -3,7 +3,7 @@ using TimerOutputs
 using BenchmarkTools
 using ThreadPinning
 
-# pinthreads(:cores)
+pinthreads(:cores)
 
 const tmr = TimerOutput()
 

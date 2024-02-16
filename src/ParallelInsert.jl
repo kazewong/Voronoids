@@ -2,15 +2,20 @@ function batch_locate!(output::AbstractArray,vertices::AbstractArray, tree::Dela
     for i in 1:length(vertices)
         output[i] = locate(Vector{Int}(), vertices[i], tree)
     end
+    output
 end
 
 function parallel_locate!(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Vector{Vector{Int}}
     output = Vector{Vector{Int}}(undef, length(vertices))
     batch_size = length(vertices) ÷ Threads.nthreads()
-    output_batch = Iterators.partition(output, batch_size)
-    vertices = Iterators.partition(vertices, batch_size)
-    map(output_batch,vertices) do local_output, vertice
-        Threads.@spawn batch_locate(local_output, vertice, tree)
+    Threads.@threads for i in 1:Threads.nthreads()
+        if i == Threads.nthreads()
+            slice = @view output[(i-1)*batch_size+1:end]
+            batch_locate!(slice, vertices[(i-1)*batch_size+1:end], tree)
+        else
+            slice = @view output[(i-1)*batch_size+1:i*batch_size]
+            batch_locate!(slice, vertices[(i-1)*batch_size+1:i*batch_size], tree)
+        end
     end
     return output
 end
@@ -35,4 +40,4 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     end
 end
 
-export parallel_locate, batch_locate, identify_nonconflict_points
+export parallel_locate!, batch_locate!, identify_nonconflict_points
