@@ -24,9 +24,10 @@ function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::De
     site_list = parallel_locate(vertices, tree)
     length_site_list = length(site_list)
     output = Vector{Bool}(undef, length_site_list)
+    output[end] = true
     Threads.@threads for i in 1:length_site_list-1
-        output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
-        # output[i] = all(isempty.(map(x -> intersect(site_list[i], site_list[x]), i+1:length_site_list)))
+        # output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
+        output[i] = all(isempty.(map(x -> intersect(site_list[i], site_list[x]), i+1:length_site_list)))
     end
     return site_list, output
 end
@@ -109,6 +110,7 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     simplices_id_repeated = reduce(vcat, fill.(simplices_id, n_dims+1))
 
     push!(tree.simplices, simplices...)
+    push!(tree.dead, fill(false, length(simplices))...)
     push!(tree.centers, centers...)
     push!(tree.radii, radii...)
 
