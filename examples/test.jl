@@ -11,7 +11,7 @@ const tmr = TimerOutput()
 
 Random.seed!(1234)
 
-n = 10
+n = 1000
 n_dims = 3
 
 test_points = [rand(n_dims) for i in 1:n]
@@ -25,7 +25,17 @@ for i in 1:n
     insert_point(tree, test_points[i])
 end
 
-sites, index = identify_nonconflict_points(test_points2[1:3], tree)
-# batch_insert_point(test_points2[1:256], tree)
+test_tree = deepcopy(tree)
+
+new_n = 100
+
+sites, index = identify_nonconflict_points(test_points2[1:new_n], test_tree)
+batch_insert_point(test_points2[1:new_n], test_tree)
+
+for i in 1:new_n
+    if index[i]
+        insert_point(tree, test_points2[i])
+    end
+end
 
 # check_delaunay(tree)

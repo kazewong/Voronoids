@@ -26,8 +26,8 @@ function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::De
     output = Vector{Bool}(undef, length_site_list)
     output[end] = true
     Threads.@threads for i in 1:length_site_list-1
-        # output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
-        output[i] = all(isempty.(map(x -> intersect(site_list[i], site_list[x]), i+1:length_site_list)))
+        output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
+        # output[i] = all(isempty.(map(x -> intersect(site_list[i], site_list[x]), i+1:length_site_list)))
     end
     return site_list, output
 end
@@ -113,6 +113,10 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     push!(tree.dead, fill(false, length(simplices))...)
     push!(tree.centers, centers...)
     push!(tree.radii, radii...)
+
+    Threads.@threads for i in 1:length(reduce(vcat, sites))
+        tree.dead[reduce(vcat, sites)[i]] = true
+    end
 
     # Replacing neighbor relationship
     push!(tree.neighbors_relation, collect(map(x->[x[1]], neighbors_id))...)
