@@ -74,7 +74,7 @@ function new_simplex(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int
     return simplices, centers, radii, neighbors_id, new_neighbors_id
 end
 
-function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)
+function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)::Vector{Int}
     sites, conflict = identify_nonconflict_points(vertices, tree)
     sites = sites[conflict]
     vertices = vertices[conflict]
@@ -142,6 +142,25 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     for vertex in vertices
         add_point!(tree.kdtree, vertex)
     end
+    return conflict
 end
 
-export parallel_locate, batch_locate!, identify_nonconflict_points, new_simplex, batch_insert_point
+function insert_point_parallel!(tree::DelaunayTree, point::Vector{Vector{Float64}}; n_dims::Int=3)
+    batch_size = Threads.nthreads()
+    inserted = fill(false, length(point))
+    while any(inserted .== false)
+        current_points = findall(x->x==false, inserted)[1:batch_size]
+        if length(current_points) > batch_size
+            current_points = current_points[1:batch_size]
+            conflict = batch_insert_point(point[current_points], tree, n_dims=n_dims)
+            inserted[current_points[conflict]] .= true    
+        else
+            for point_id in current_points
+                insert_point(tree, point[point_id], n_dims=n_dims)
+                inserted[point_id] = true
+            end
+        end
+    end
+end
+
+export parallel_locate, batch_locate!, identify_nonconflict_points, new_simplex, batch_insert_point, insert_point_parallel!
