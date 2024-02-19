@@ -24,6 +24,7 @@ function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::De
     length_site_list = length(site_list)
     output = Vector{Bool}(undef, length_site_list)
     output[end] = true
+    # This following part is slow TOD
     Threads.@threads for i in 1:length_site_list-1
         output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
         # output[i] = all(isempty.(map(x -> intersect(site_list[i], site_list[x]), i+1:length_site_list)))
@@ -73,7 +74,7 @@ function new_simplex(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int
     return simplices, centers, radii, neighbors_id, new_neighbors_id
 end
 
-function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)::Vector{Bool}
+function batch_insert_point2(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)#::Vector{Bool}
     sites, conflict = identify_nonconflict_points(vertices, tree)
     sites = sites[conflict]
     vertices = vertices[conflict]
@@ -84,63 +85,63 @@ function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(vertices))
     new_neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(vertices))
 
-    Threads.@threads for i in 1:length(vertices)
-        _simplices, _centers, _radii, _neighbors_id, _new_neighbors_id = new_simplex(sites[i], vertices[i], vertex_ids[i], tree)
-        simplices[i] = _simplices
-        centers[i] = _centers
-        radii[i] = _radii
-        neighbors_id[i] = _neighbors_id
-        new_neighbors_id[i] = _new_neighbors_id
-    end
-    simplices_id = [collect(length(tree.simplices)+1:length(tree.simplices)+length(simplices[1]))]
-    for i in 2:length(simplices)
-        push!(simplices_id, collect(simplices_id[i-1][end]+1:simplices_id[i-1][end]+length(simplices[i])))
-    end
+    # Threads.@threads for i in 1:length(vertices)
+    #     _simplices, _centers, _radii, _neighbors_id, _new_neighbors_id = new_simplex(sites[i], vertices[i], vertex_ids[i], tree)
+    #     simplices[i] = _simplices
+    #     centers[i] = _centers
+    #     radii[i] = _radii
+    #     neighbors_id[i] = _neighbors_id
+    #     new_neighbors_id[i] = _new_neighbors_id
+    # end
+    # simplices_id = [collect(length(tree.simplices)+1:length(tree.simplices)+length(simplices[1]))]
+    # for i in 2:length(simplices)
+    #     push!(simplices_id, collect(simplices_id[i-1][end]+1:simplices_id[i-1][end]+length(simplices[i])))
+    # end
 
-    new_neighbors_id = map(y->map(x->(simplices_id[y][x[1]],simplices_id[y][x[2]]), new_neighbors_id[y]),1:length(new_neighbors_id))
+    # new_neighbors_id = map(y->map(x->(simplices_id[y][x[1]],simplices_id[y][x[2]]), new_neighbors_id[y]),1:length(new_neighbors_id))
 
-    simplices = reduce(vcat, simplices)
-    centers = reduce(vcat, centers)
-    radii = reduce(vcat, radii)
-    neighbors_id = reduce(vcat, neighbors_id)
-    new_neighbors_id = reduce(vcat, new_neighbors_id)
-    simplices_id = reduce(vcat,simplices_id)#[length(tree.simplices) + i for i in 1:length(simplices)]
-    simplices_id_repeated = reduce(vcat, fill.(simplices_id, n_dims+1))
+    # simplices = reduce(vcat, simplices)
+    # centers = reduce(vcat, centers)
+    # radii = reduce(vcat, radii)
+    # neighbors_id = reduce(vcat, neighbors_id)
+    # new_neighbors_id = reduce(vcat, new_neighbors_id)
+    # simplices_id = reduce(vcat,simplices_id)#[length(tree.simplices) + i for i in 1:length(simplices)]
+    # simplices_id_repeated = reduce(vcat, fill.(simplices_id, n_dims+1))
 
-    push!(tree.simplices, simplices...)
-    push!(tree.dead, fill(false, length(simplices))...)
-    push!(tree.centers, centers...)
-    push!(tree.radii, radii...)
+    # push!(tree.simplices, simplices...)
+    # push!(tree.dead, fill(false, length(simplices))...)
+    # push!(tree.centers, centers...)
+    # push!(tree.radii, radii...)
 
-    Threads.@threads for i in 1:length(reduce(vcat, sites))
-        tree.dead[reduce(vcat, sites)[i]] = true
-    end
+    # Threads.@threads for i in 1:length(reduce(vcat, sites))
+    #     tree.dead[reduce(vcat, sites)[i]] = true
+    # end
 
-    # Replacing neighbor relationship
-    push!(tree.neighbors_relation, collect(map(x->[x[1]], neighbors_id))...)
-    for i in 1:length(neighbors_id)
-        tree.neighbors_relation[neighbors_id[i][1]][tree.neighbors_relation[neighbors_id[i][1]].== neighbors_id[i][2]] .= simplices_id[i]
-    end
+    # # Replacing neighbor relationship
+    # push!(tree.neighbors_relation, collect(map(x->[x[1]], neighbors_id))...)
+    # for i in 1:length(neighbors_id)
+    #     tree.neighbors_relation[neighbors_id[i][1]][tree.neighbors_relation[neighbors_id[i][1]].== neighbors_id[i][2]] .= simplices_id[i]
+    # end
 
-    for i in 1:length(new_neighbors_id)
-        push!(tree.neighbors_relation[new_neighbors_id[i][1]], new_neighbors_id[i][2])
-    end
+    # for i in 1:length(new_neighbors_id)
+    #     push!(tree.neighbors_relation[new_neighbors_id[i][1]], new_neighbors_id[i][2])
+    # end
 
-    # Updating vertex simplex relationship
-    all_vertices = reduce(vcat, simplices)
-    for i in 1:length(vertices)
-        push!(tree.vertices_simplex, Vector{Int}())
-    end
-    for i in 1:length(all_vertices)
-        tree.vertices_simplex[all_vertices[i]] = push!(tree.vertices_simplex[all_vertices[i]], simplices_id_repeated[i])
-    end
+    # # Updating vertex simplex relationship
+    # all_vertices = reduce(vcat, simplices)
+    # for i in 1:length(vertices)
+    #     push!(tree.vertices_simplex, Vector{Int}())
+    # end
+    # for i in 1:length(all_vertices)
+    #     tree.vertices_simplex[all_vertices[i]] = push!(tree.vertices_simplex[all_vertices[i]], simplices_id_repeated[i])
+    # end
 
-    # Adding vertices
-    push!(tree.vertices, vertices...)
-    for vertex in vertices
-        add_point!(tree.kdtree, vertex)
-    end
-    return conflict
+    # # Adding vertices
+    # push!(tree.vertices, vertices...)
+    # for vertex in vertices
+    #     add_point!(tree.kdtree, vertex)
+    # end
+    # return conflict
 end
 
 function insert_point_parallel!(tree::DelaunayTree, point::Vector{Vector{Float64}}; n_dims::Int=3, batch_factor::Int=4)
