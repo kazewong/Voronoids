@@ -102,7 +102,10 @@ function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
         end
     end
     
-    # println("len new_node_id: ", length(new_node_id))
+    #=
+    This part is O(n^2) and can be optimized.
+    I think by checking the vertices and make use of the vertice to simplex assignment, this could be reduced to O(n)
+    =#
     for i in 1:length(new_node_id)
         for j in i+1:length(new_node_id)
             new_id1 = new_node_id[i]

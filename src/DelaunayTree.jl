@@ -13,6 +13,10 @@ mutable struct DelaunayTree
 end
 
 function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
+    #=
+    This version of the code needs to comptue 4 determinants, which doesn't seem to be ideal to me.
+    There should be an easier way to determine the centers and the radius.
+    =#
     if n_dims == 2
         x1, y1 = vertices[1]
         x2, y2 = vertices[2]
