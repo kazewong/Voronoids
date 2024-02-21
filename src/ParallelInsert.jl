@@ -1,20 +1,16 @@
-function batch_locate!(output::AbstractArray, vertices::AbstractArray, tree::DelaunayTree)
+function batch_locate(vertices::AbstractArray, tree::DelaunayTree)
+    output = Vector{Vector{Int}}(undef, length(vertices))
     for i in 1:length(vertices)
         output[i] = locate(Vector{Int}(), vertices[i], tree)
     end
+    return output
 end
 
 function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Vector{Vector{Int}}
     output = Vector{Vector{Int}}(undef, length(vertices))
-    batch_size = length(vertices) ÷ Threads.nthreads()
-    Threads.@threads for i in 1:Threads.nthreads()
-        if i == Threads.nthreads()
-            slice = @view output[(i-1)*batch_size+1:end]
-            batch_locate!(slice, vertices[(i-1)*batch_size+1:end], tree)
-        else
-            slice = @view output[(i-1)*batch_size+1:i*batch_size]
-            batch_locate!(slice, vertices[(i-1)*batch_size+1:i*batch_size], tree)
-        end
+    chunks = collect(Iterators.partition(eachindex(vertices), length(vertices) ÷ Threads.nthreads()))
+    Threads.@threads for chunk in chunks
+        output[chunk] = batch_locate(vertices[chunk], tree)
     end
     return output
 end
@@ -169,4 +165,4 @@ function insert_point_parallel!(tree::DelaunayTree, point::Vector{Vector{Float64
     end
 end
 
-export parallel_locate, batch_locate!, identify_nonconflict_points, new_simplex, batch_insert_point, insert_point_parallel!
+export parallel_locate, batch_locate, identify_nonconflict_points, new_simplex, batch_insert_point, insert_point_parallel!
