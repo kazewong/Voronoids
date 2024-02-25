@@ -14,8 +14,8 @@ Random.seed!(1234)
 n = 3000
 n_dims = 3
 
-test_points = [@SVector rand(n_dims) for i in 1:n]
-test_points2 = [@SVector rand(n_dims) for i in 1:1e5]
+test_points = [rand(n_dims) for i in 1:n]
+test_points2 = [rand(n_dims) for i in 1:1e5]
 if n_dims == 3
     tree = initialize_tree_3d(test_points)
 else

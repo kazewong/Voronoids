@@ -1,10 +1,3 @@
-function find_box_boundary_from_simplices_id(simplices_id::Vector{Int}, tree::DelaunayTree)::Tuple{Vector{Float64}, Vector{Float64}}
-    vertices = tree.vertices[reduce(vcat, tree.simplices[simplices_id])]
-    max_vertices = maximum(vertices, dims=1)[1]
-    min_vertices = minimum(vertices, dims=1)[1]
-    return max_vertices, min_vertices
-end
-
 function batch_locate(vertices::AbstractArray, tree::DelaunayTree)
     output = Vector{Vector{Int}}(undef, length(vertices))
     for i in 1:length(vertices)
@@ -172,4 +165,4 @@ function insert_point_parallel!(tree::DelaunayTree, point::Vector{Vector{Float64
     end
 end
 
-export find_box_boundary_from_simplices_id, parallel_locate, batch_locate, identify_nonconflict_points, new_simplex, batch_insert_point, insert_point_parallel!
+export parallel_locate, batch_locate, identify_nonconflict_points, new_simplex, batch_insert_point, insert_point_parallel!
