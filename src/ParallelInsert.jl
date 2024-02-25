@@ -1,3 +1,5 @@
+
+
 function batch_locate(vertices::AbstractArray, tree::DelaunayTree)
     output = Vector{Vector{Int}}(undef, length(vertices))
     for i in 1:length(vertices)
@@ -15,7 +17,7 @@ function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree):
     return output
 end
 
-function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}}}
+function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}},Vector{Vector{Int}}}
     #=
     As opposed to checking for conflict per pair of vertices, the idea is to use an occupancy list to indiciate whether a site has any conflict with its neighbors.
 
@@ -27,17 +29,42 @@ function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::De
 
     =#
     site_list = parallel_locate(vertices, tree)
+    neighbor_list = [Vector{Int}() for i in 1:length(site_list)]
     occupancy = [Vector{Int}() for i in 1:length(tree.simplices)]
     for i in 1:length(site_list)
-        neighbor_list = filter(x->x ∉ site_list[i], unique(reduce(vcat, tree.neighbors_relation[site_list[i]])))
-        for neighbor in neighbor_list
+        neighbors = filter(x->x ∉ site_list[i], unique(reduce(vcat, tree.neighbors_relation[site_list[i]])))
+        for neighbor in neighbors
             occupancy[neighbor] = push!(occupancy[neighbor], i)
         end
+        neighbor_list[i] = neighbors
     end
-    return site_list, occupancy
+    return site_list, neighbor_list, occupancy
 end
 
-# Try the sphere check for identifying nonconflict point later.
+function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, occupancy::Vector{Vector{Int}},vertex_id::Int)::Vector{Int}
+    push!(result, vertex_id)
+    conflict_list = unique(reduce(vcat, occupancy[neighbors[vertex_id]]))
+    for conflict in conflict_list
+        if conflict ∉ result
+            result = find_conflict_group(result, neighbors, occupancy, conflict)
+        end
+    end
+    return result
+end
+
+function group_points(site_list::Vector{Vector{Int}}, occupancy::Vector{Vector{Int}})::Tuple{Vector{Vector{Int}}, Vector{Vector{Int}}}
+    #=
+    This function groups the vertices which occupies the same simplices together.
+    =#
+    output = Vector{Vector{Int}}()
+    for i in 1:length(occupancy)
+        if length(occupancy[i]) > 1
+            push!(output, occupancy[i])
+        end
+    end
+    return output
+end
+
 
 function make_new_neighbors(simplices::Vector{Vector{Int}}; n_dims::Int=3)::Vector{Tuple{Int, Int}}
     length_simplices = length(simplices)
@@ -80,7 +107,7 @@ function new_simplex(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int
 end
 
 function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)#::Vector{Bool}
-    sites, conflict = identify_nonconflict_points(vertices, tree)
+    sites, conflict = identify_conflicts(vertices, tree)
     sites = sites[conflict]
     vertices = vertices[conflict]
     vertex_ids = [length(tree.vertices) + i for i in 1:length(vertices)]
@@ -167,4 +194,4 @@ function insert_point_parallel!(tree::DelaunayTree, point::Vector{Vector{Float64
     end
 end
 
-export parallel_locate, batch_locate, identify_nonconflict_points, new_simplex, batch_insert_point, insert_point_parallel!
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, new_simplex, batch_insert_point, insert_point_parallel!
