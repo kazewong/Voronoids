@@ -29,14 +29,18 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
 
     =#
     site_list = parallel_locate(vertices, tree)
-    neighbor_list = [Vector{Int}() for i in 1:length(site_list)]
-    occupancy = [Vector{Int}() for i in 1:length(tree.simplices)]
+    neighbor_list = Vector{Vector{Int}}(undef,length(site_list))
+    occupancy = Vector{Vector{Int}}(undef, length(tree.simplices))
+    Threads.@threads for i in 1:length(site_list)
+        neighbor_list[i] = filter(x->x ∉ site_list[i], unique(reduce(vcat, tree.neighbors_relation[site_list[i]])))
+    end
     for i in 1:length(site_list)
-        neighbors = filter(x->x ∉ site_list[i], unique(reduce(vcat, tree.neighbors_relation[site_list[i]])))
-        for neighbor in neighbors
+        for neighbor in neighbor_list[i]
+            if !isdefined(occupancy,neighbor) 
+                occupancy[neighbor] = Vector{Int}()
+            end
             occupancy[neighbor] = push!(occupancy[neighbor], i)
         end
-        neighbor_list[i] = neighbors
     end
     return site_list, neighbor_list, occupancy
 end
