@@ -52,15 +52,17 @@ function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}
     return result
 end
 
-function group_points(site_list::Vector{Vector{Int}}, occupancy::Vector{Vector{Int}})::Tuple{Vector{Vector{Int}}, Vector{Vector{Int}}}
+function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}}, occupancy::Vector{Vector{Int}})::Vector{Vector{Int}}
     #=
     This function groups the vertices which occupies the same simplices together.
     =#
     output = Vector{Vector{Int}}()
-    for i in 1:length(occupancy)
-        if length(occupancy[i]) > 1
-            push!(output, occupancy[i])
-        end
+    checked = Vector{Int}()
+    while length(checked) < length(site_list)
+        vertex_id = findfirst(x->x ∉ checked, 1:length(site_list))
+        conflict_group = find_conflict_group(Vector{Int}(), neighbors, occupancy, vertex_id)
+        push!(output, conflict_group)
+        push!(checked, conflict_group...)
     end
     return output
 end
@@ -194,4 +196,4 @@ function insert_point_parallel!(tree::DelaunayTree, point::Vector{Vector{Float64
     end
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, new_simplex, batch_insert_point, insert_point_parallel!
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, new_simplex, batch_insert_point, insert_point_parallel!
