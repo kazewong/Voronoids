@@ -17,11 +17,13 @@ end
 
 function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}}}
     #=
-    The current version of this function uses a O(n^2) algorithm to filter the intersection between neighbor.
-    If there is non intersection between the neighbor of the vertices, then the vertices is nonconflict.
-    This is slow because of the n^2 part.
+    As opposed to checking for conflict per pair of vertices, the idea is to use an occupancy list to indiciate whether a site has any conflict with its neighbors.
 
-    To improve this function, I think we can compute the distance between the site and the farest vertices from it. Then filter the rest of the sites based on the distance.
+    This involves populating the occupancy list with the site indices, which has complexity O(n) as opposed to O(n^2) for the pair-wise check.
+
+    The output contains the indices of vertices which occupies a certain simplex, which can be used to trace back to which vertices is a particular vertex conflicting with.
+
+    This will benefit from pruning the dead simplices, which is not implemented yet.
 
     =#
     site_list = parallel_locate(vertices, tree)
