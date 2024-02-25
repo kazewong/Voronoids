@@ -15,7 +15,7 @@ function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree):
     return output
 end
 
-function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Bool}}
+function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}}}
     #=
     The current version of this function uses a O(n^2) algorithm to filter the intersection between neighbor.
     If there is non intersection between the neighbor of the vertices, then the vertices is nonconflict.
@@ -25,14 +25,14 @@ function identify_nonconflict_points(vertices::Vector{Vector{Float64}}, tree::De
 
     =#
     site_list = parallel_locate(vertices, tree)
-    length_site_list = length(site_list)
-    output = Vector{Bool}(undef, length_site_list)
-    output[end] = true
-    # This following part is slow TOD
-    Threads.@threads for i in 1:length_site_list-1
-        output[i] = all(isempty.(map(x->intersect(reduce(vcat,tree.neighbors_relation[site_list[i]]), reduce(vcat, tree.neighbors_relation[site_list[x]])), i+1:length_site_list)))
+    occupancy = [Vector{Int}() for i in 1:length(tree.simplices)]
+    for i in 1:length(site_list)
+        neighbor_list = filter(x->x ∉ site_list[i], unique(reduce(vcat, tree.neighbors_relation[site_list[i]])))
+        for neighbor in neighbor_list
+            occupancy[neighbor] = push!(occupancy[neighbor], i)
+        end
     end
-    return site_list, output
+    return site_list, occupancy
 end
 
 # Try the sphere check for identifying nonconflict point later.

@@ -11,7 +11,7 @@ const tmr = TimerOutput()
 
 Random.seed!(1234)
 
-n = 3000
+n = 5000
 n_dims = 3
 
 test_points = [rand(n_dims) for i in 1:n]
@@ -22,7 +22,7 @@ else
     tree = initialize_tree_2d(test_points)
 end
 for i in 1:n
-    insert_point(tree, test_points[i])
+    insert_point(tree, test_points[i], n_dims=n_dims)
 end
 parallel_tree = deepcopy(tree)
 
