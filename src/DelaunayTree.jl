@@ -1,18 +1,19 @@
 using AdaptiveKDTrees.KNN
 using BoundingSphere
+using StaticArrays
 
 mutable struct DelaunayTree
-    vertices::Vector{Vector{Float64}}
+    vertices::Vector{SVector{3, Float64}}
     dead::Vector{Bool}
     kdtree::KDTree
     simplices::Vector{Vector{Int}}
     vertices_simplex::Vector{Vector{Int}}
-    centers::Vector{Vector{Float64}}
+    centers::Vector{SVector{3,Float64}}
     radii::Vector{Float64}
     neighbors_relation::Vector{Vector{Int}}
 end
 
-function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
+function circumsphere(vertices::AbstractVector; n_dims::Int=3)
     #=
     This version of the code needs to comptue 4 determinants, which doesn't seem to be ideal to me.
     There should be an easier way to determine the centers and the radius.
@@ -86,7 +87,7 @@ function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
     end
 end
 
-function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
+function initialize_tree_3d(positions::Vector{SVector{3, Float64}})::DelaunayTree
     center, radius = boundingsphere(positions)
     radius = radius*5
     first_vertex = center + [0, 0, radius]
@@ -107,7 +108,7 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     return DelaunayTree(vertices, dead, kd_tree, simplicies, vertices_simplex, centers, radii, neighbors_relation)
 end
 
-function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
+function initialize_tree_2d(positions::Vector{SVector{2, Float64}})::DelaunayTree
     center, radius = boundingsphere(positions)
     radius = radius*3
     first_vertex = center + [radius * cos(0* pi / 3), radius * sin(0 * pi / 3)]

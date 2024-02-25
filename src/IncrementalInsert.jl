@@ -24,11 +24,11 @@ function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
     end
 end
 
-function in_sphere(node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Bool
+function in_sphere(node_id::Int, point::AbstractVector{Float64}, tree::DelaunayTree)::Bool
     return norm(point .- tree.centers[node_id]) < tree.radii[node_id]
 end
 
-function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
+function find_all_neighbors(output::Vector{Int}, node_id::Int, point::AbstractVector{Float64}, tree::DelaunayTree)::Vector{Int}
     neighbors = tree.neighbors_relation[node_id]
     for neighbor_id in neighbors
         if neighbor_id ∉ output && in_sphere(neighbor_id, point, tree)
@@ -39,11 +39,11 @@ function find_all_neighbors(output::Vector{Int}, node_id::Int, point::Vector{Flo
     return output
 end
 
-function find_nearest_simplex(point::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
+function find_nearest_simplex(point::AbstractVector{Float64}, tree::DelaunayTree)::Vector{Int}
     return tree.vertices_simplex[nn(tree.kdtree, point)[1]]
 end
 
-function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
+function locate(output::Vector{Int}, vertex::AbstractVector{Float64}, tree::DelaunayTree)::Vector{Int}
     simplex_id = find_nearest_simplex(vertex, tree)
     for id in simplex_id[tree.dead[simplex_id] .== false]
         if in_sphere(id, vertex, tree)
@@ -64,7 +64,7 @@ function common_facet(simplex1::Vector{Int}, simplex2::Vector{Int}; n_dims::Int 
     end
 end
 
-function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
+function insert_point(tree::DelaunayTree, point::AbstractVector{Float64}; n_dims::Int=3)
     killed_nodes = locate(Vector{Int}(), point, tree)
     new_node_id = Vector{Int}()
     push!(tree.vertices_simplex, Vector{Int}())
