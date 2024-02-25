@@ -77,7 +77,7 @@ function new_simplex(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int
     return simplices, centers, radii, neighbors_id, new_neighbors_id
 end
 
-function batch_insert_point2(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)#::Vector{Bool}
+function batch_insert_point(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)#::Vector{Bool}
     sites, conflict = identify_nonconflict_points(vertices, tree)
     sites = sites[conflict]
     vertices = vertices[conflict]
