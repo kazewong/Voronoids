@@ -10,6 +10,7 @@ mutable struct DelaunayTree
     centers::Dict{Int, Vector{Float64}}
     radii::Dict{Int, Float64}
     neighbors_relation::Dict{Int, Vector{Int}}
+    max_simplices_id::Int
 end
 
 struct TreeUpdate
@@ -25,30 +26,37 @@ end
 
 function insert_point!(tree::DelaunayTree, update::TreeUpdate)
     new_vertex_id = length(tree.vertices) + 1
-    new_simplices_id = length(tree.simplices) .- length(update.killed_sites) .+ update.simplices_id
     killed_sites_ids = sort(update.killed_sites)
-    killed_sites = tree.simplices[killed_sites_ids]
     push!(tree.vertices, update.vertices)
     add_point!(tree.kdtree, update.vertices)
 
     # Update neighbor relation with killed sites
     for i in 1:length(update.neighbors_id)
         neighbor_id, killed_id = update.neighbors_id[i]
-        tree.neighbors_relation[neighbor_id][tree.neighbors_relation[neighbor_id] .== killed_id] .= new_simplices_id
+        tree.neighbors_relation[neighbor_id][tree.neighbors_relation[neighbor_id] .== killed_id] .= update.simplices_id[i]
     end
 
     # Update neighbor relation between new sites
-    push!(tree.neighbors_relation, collect(map(x->[x[1]], neighbors_id))...)
-    for i in 1:length(new_neighbors_id)
-        push!(tree.neighbors_relation[new_simplices_id[new_neighbors_id[i][1]]], new_simplices_id[new_neighbors_id[i][2]])
+    for i in 1:length(update.simplices_id)
+        tree.neighbors_relation[update.simplices_id[i]] = [update.neighbors_id[i][1]]
+    end
+    for i in 1:length(update.new_neighbors_id)
+        push!(tree.neighbors_relation[update.new_neighbors_id[i][1]], update.new_neighbors_id[i][2])
     end
 
     # Update vertices_simplex
-    push!(tree.vertices_simplex, new_simplices_id)
-    for i in 1:length(killed_sites)
-        for j in killed_sites[i]
+    push!(tree.vertices_simplex, update.simplices_id)
+    for i in 1:length(killed_sites_ids)
+        for j in tree.simplices[killed_sites_ids[i]]
             tree.vertices_simplex[j] = filter(x->x!=killed_sites_ids[i], tree.vertices_simplex[j])
         end
+    end
+
+    # Update simplices
+    for i in 1:length(update.simplices_id)
+        tree.simplices[update.simplices_id[i]] = update.simplices[i]
+        tree.centers[update.simplices_id[i]] = update.centers[i]
+        tree.radii[update.simplices_id[i]] = update.radii[i]
     end
 
     # Remove killed sites
@@ -58,6 +66,8 @@ function insert_point!(tree::DelaunayTree, update::TreeUpdate)
         delete!(tree.radii, killed_sites_id)
         delete!(tree.neighbors_relation, killed_sites_id)
     end
+
+    tree.max_simplices_id = maximum(update.simplices_id)
 end
 
 function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
@@ -78,7 +88,7 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     neighbors_relation = Dict(1 => [2, 3, 4, 5], 2 => [1], 3 => [1], 4 => [1], 5 => [1])
     
 
-    return DelaunayTree(vertices, kd_tree, vertices_simplex, simplicies, centers, radii, neighbors_relation)
+    return DelaunayTree(vertices, kd_tree, vertices_simplex, simplicies, centers, radii, neighbors_relation, 5)
 end
 
 function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
@@ -97,7 +107,7 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     radii = Dict(1 => radius, 2 => 0, 3 => 0, 4 => 0)
     neighbors_relation = Dict(1 => [2, 3, 4], 2 => [1], 3 => [1], 4 => [1])
 
-    return DelaunayTree(vertices, kd_tree, vertices_simplex, simplicies, centers, radii, neighbors_relation)
+    return DelaunayTree(vertices, kd_tree, vertices_simplex, simplicies, centers, radii, neighbors_relation, 4)
 end
 
-export initialize_tree_2d, initialize_tree_3d, DelaunayTree
+export initialize_tree_2d, initialize_tree_3d, DelaunayTree, insert_point!

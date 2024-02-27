@@ -76,22 +76,18 @@ end
 
 function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
     if n_dims==3
-        for i in 1:length(tree.simplices)
-            if !tree.dead[i]
-                for j in 1:length(tree.vertices)
-                    if in_sphere(i, tree.vertices[j], tree) && tree.vertices[j] ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>8)
-                        println("Error, point ", j, " is inside the circumcircle of simplex ", i)
-                    end
+        for i in keys(tree.simplices)
+            for j in 1:length(tree.vertices)
+                if in_sphere(i, tree.vertices[j], tree) && tree.vertices[j] ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>8)
+                    println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                 end
             end
         end
     elseif n_dims==2
-        for i in 1:length(tree.simplices)
-            if !tree.dead[i]
-                for j in tree.vertices
-                    if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>6)
-                        println("Error, point ", j, " is inside the circumcircle of simplex ", i)
-                    end
+        for i in keys(tree.simplices)
+            for j in tree.vertices
+                if in_sphere(i, j, tree) && j ∉ tree.vertices[tree.simplices[i]] && all(tree.simplices[i].>6)
+                    println("Error, point ", j, " is inside the circumcircle of simplex ", i)
                 end
             end
         end
@@ -157,15 +153,15 @@ function get_new_simplices(site::Int, vertex::Vector{Float64}, tree::DelaunayTre
     return (simplices, centers, radii, neighbors_id)
 end
 
-function make_new_neighbors(simplices::Vector{Vector{Int}}; n_dims::Int=3)::Vector{Tuple{Int, Int}}
+function make_new_neighbors(simplices::Vector{Vector{Int}}, simplices_id:: Vector{Int}; n_dims::Int=3)::Vector{Tuple{Int, Int}}
     length_simplices = length(simplices)
     output = Vector{Tuple{Int, Int}}()
     for i in 1:length_simplices
         for j in i+1:length_simplices
             facet = common_facet(simplices[i], simplices[j])
             if length(facet) == n_dims
-                push!(output, (i, j))
-                push!(output, (j, i))
+                push!(output, (simplices_id[i], simplices_id[j]))
+                push!(output, (simplices_id[j], simplices_id[i]))
             end
         end
     end
@@ -179,18 +175,18 @@ function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3):
     centers = Vector{Vector{Vector{Float64}}}(undef, length(killed_sites))
     radii = Vector{Vector{Float64}}(undef, length(killed_sites))
     neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(killed_sites))
-    simplices_counter = length(tree.simplices)
+    simplices_counter = tree.max_simplices_id+1
     for i in 1:length(killed_sites)
         simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, tree, n_dims=n_dims)
-        simplices_ids[i] = collect(simplices_counter:simplices_counter+length(simplices[i]))
-        simplices_counter += length(simplices[i])+1
+        simplices_ids[i] = collect(simplices_counter:simplices_counter+length(simplices[i])-1)
+        simplices_counter += length(simplices[i])
     end
     simplices = vcat(simplices...)
-    simplices_ids = vcat(simplices_ids...)[2:end]
+    simplices_ids = vcat(simplices_ids...)
     centers = vcat(centers...)
     radii = vcat(radii...)
     neighbors_id = vcat(neighbors_id...)
-    new_neighbors_id = make_new_neighbors(simplices, n_dims=n_dims)
+    new_neighbors_id = make_new_neighbors(simplices, simplices_ids, n_dims=n_dims)
     return TreeUpdate(point, killed_sites, simplices, simplices_ids, centers, radii, neighbors_id, new_neighbors_id)
 end
 

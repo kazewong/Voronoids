@@ -21,10 +21,17 @@ if n_dims == 3
 else
     tree = initialize_tree_2d(test_points)
 end
-# for i in 1:n
-#     insert_point(tree, test_points[i], n_dims=n_dims)
-# end
 parallel_tree = deepcopy(tree)
 
 sites = locate(Vector{Int}(), test_points2[1], tree)
-add_vertex!(tree, test_points[1], n_dims=n_dims)
+# updates = make_update(test_points[1], tree, n_dims=n_dims)
+# insert_point!(tree, updates)
+# updates2 = make_update(test_points[2], tree, n_dims=n_dims)
+# insert_point!(tree, updates2)
+# updates2 = make_update(test_points[3], tree, n_dims=n_dims)
+# insert_point!(tree, updates)
+
+for i in 1:10
+    println(i)
+    add_vertex!(tree, test_points[i], n_dims=n_dims)
+end
