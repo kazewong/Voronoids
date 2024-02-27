@@ -3,87 +3,32 @@ using BoundingSphere
 
 mutable struct DelaunayTree
     vertices::Vector{Vector{Float64}}
-    dead::Vector{Bool}
     kdtree::KDTree
-    simplices::Vector{Vector{Int}}
     vertices_simplex::Vector{Vector{Int}}
+
+    simplices::Vector{Vector{Int}}
     centers::Vector{Vector{Float64}}
     radii::Vector{Float64}
     neighbors_relation::Vector{Vector{Int}}
 end
 
-function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
-    #=
-    This version of the code needs to comptue 4 determinants, which doesn't seem to be ideal to me.
-    There should be an easier way to determine the centers and the radius.
-    =#
-    if n_dims == 2
-        x1, y1 = vertices[1]
-        x2, y2 = vertices[2]
-        x3, y3 = vertices[3]
+struct TreeUpdate
+    vertices::Vector{Float64} # New vertices
+    killed_sites::Vector{Int} # id of the killed simplices
+    simplices::Vector{Vector{Int}} # Vertices of the new simplices
+    centers::Vector{Vector{Float64}} # Centers of the circumsphere of the new simplices
+    radii::Vector{Float64} # Radii of the circumsphere of the new simplices
+    neighbors_id::Vector{Tuple{Int, Int}} # (Neighbor Id, killed site Id)
+    new_neighbors_id::Vector{Tuple{Int, Int}} # (New site Id1, New site Id2)
+end
 
-        # Midpoints of AB and BC
-        D = ((x1 + x2) / 2, (y1 + y2) / 2)
-        E = ((x2 + x3) / 2, (y2 + y3) / 2)
-
-        # Slopes of AB and BC
-        mAB = (y2 - y1) / (x2 - x1)
-        mBC = (y3 - y2) / (x3 - x2)
-
-        # Slopes of perpendicular bisectors
-        mD = -1 / mAB
-        mE = -1 / mBC
-
-        # Calculating the circumcenter (X, Y)
-        X = (mD * D[1] - mE * E[1] + E[2] - D[2]) / (mD - mE)
-        Y = mD * (X - D[1]) + D[2]
-
-        # Radius of the circumcircle
-        R = sqrt((X - x1)^2 + (Y - y1)^2)
-
-        return ([X, Y], R)
-    elseif n_dims == 3
-        v1 = vertices[1]
-        v2 = vertices[2]
-        v3 = vertices[3]
-        v4 = vertices[4]
-
-        if (v1==v2) || (v1==v3) || (v1==v4) || (v2==v3) || (v2==v4) || (v3==v4)
-            return ((0, 0, 0), 0)
-        end
-
-        length_column = [
-            v1[1]^2 + v1[2]^2 + v1[3]^2;
-            v2[1]^2 + v2[2]^2 + v2[3]^2;
-            v3[1]^2 + v3[2]^2 + v3[3]^2;
-            v4[1]^2 + v4[2]^2 + v4[3]^2;
-        ]
-
-        a = det([v1[1] v1[2] v1[3] 1;
-            v2[1] v2[2] v2[3] 1;
-            v3[1] v3[2] v3[3] 1;
-            v4[1] v4[2] v4[3] 1])
-
-        Dx = det([length_column[1] v1[2] v1[3] 1;
-            length_column[2] v2[2] v2[3] 1;
-            length_column[3] v3[2] v3[3] 1;
-            length_column[4] v4[2] v4[3] 1])
-
-        Dy = - det([length_column[1] v1[1] v1[3] 1;
-            length_column[2] v2[1] v2[3] 1;
-            length_column[3] v3[1] v3[3] 1;
-            length_column[4] v4[1] v4[3] 1])
-
-        Dz = det([length_column[1] v1[1] v1[2] 1;
-            length_column[2] v2[1] v2[2] 1;
-            length_column[3] v3[1] v3[2] 1;
-            length_column[4] v4[1] v4[2] 1])
-
-        center = [Dx/2/a, Dy/2/a, Dz/2/a]
-        radius = sqrt((v1[1]-center[1])^2 + (v1[2]-center[2])^2 + (v1[3]-center[3])^2)
-
-        return ([Dx/2/a,Dy/2/a,Dz/2/a], radius) # Return the center coordinates and the radius
-    end
+function insert_point!(tree::DelaunayTree, update::TreeUpdate)
+    push!(tree.vertices, update.vertices)
+    add_point!(tree.kdtree, update.vertices)
+    deleteat!(tree.simplices, update.killed_sites)
+    deleteat!(tree.centers, update.killed_sites)
+    deleteat!(tree.radii, update.killed_sites)
+    deleteat!(tree.neighbors_relation, update.killed_sites)
 end
 
 function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
@@ -100,11 +45,10 @@ function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
     vertices_simplex = [[1,2,3,4], [1, 2, 4, 5], [1, 2, 3, 5], [1, 3, 4, 5], [2], [3], [4], [5]]
     centers = [center, [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
     radii = [radius, 0, 0, 0, 0]
-    dead = [false, false, false, false, false]
 
     neighbors_relation = [[2, 3, 4, 5], [1], [1], [1], [1]]
     kd_tree = KDTree(reduce(hcat, vertices))
-    return DelaunayTree(vertices, dead, kd_tree, simplicies, vertices_simplex, centers, radii, neighbors_relation)
+    return DelaunayTree(vertices, kd_tree, simplicies, vertices_simplex, centers, radii, neighbors_relation)
 end
 
 function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
@@ -120,11 +64,10 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     vertices_simplex = [[1, 2, 3], [1, 2, 4], [1, 3, 4], [2], [3], [4]]
     centers = [center, [0, 0], [0, 0], [0, 0]]
     radii = [radius, 0, 0, 0]
-    dead = [false, false, false, false]
 
     neighbors_relation = [[2, 3, 4], [1], [1], [1]]
     kd_tree = KDTree(reduce(hcat, vertices))
-    return DelaunayTree(vertices, dead, kd_tree, simplicies, vertices_simplex, centers, radii, neighbors_relation)
+    return DelaunayTree(vertices, kd_tree, simplicies, vertices_simplex, centers, radii, neighbors_relation)
 end
 
-export initialize_tree_2d, initialize_tree_3d, DelaunayTree, circumsphere
+export initialize_tree_2d, initialize_tree_3d, DelaunayTree

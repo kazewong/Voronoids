@@ -26,16 +26,4 @@ for i in 1:n
 end
 parallel_tree = deepcopy(tree)
 
-function insert_all_points!(tree, points)
-    conflicts = Vector{Bool}()
-    batch_size = 256
-    for i in 1:batch_size:length(test_points2)
-        conflicts = vcat(conflicts, batch_insert_point(test_points2[i:min(i+batch_size-1, length(test_points2))], tree))
-        println(sum(conflicts))
-    end
-end
-
-# insert_all_points!(parallel_tree, test_points2)
-batch_insert_point(test_points2[1024:2048], parallel_tree)
-
-# insert_point_parallel!(parallel_tree, test_points2, batch_factor=16)
+sites = locate(Vector{Int}(), test_points2[1], tree)
