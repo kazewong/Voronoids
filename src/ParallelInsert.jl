@@ -17,7 +17,7 @@ function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree):
     return output
 end
 
-function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}},Vector{Vector{Int}}}
+function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}},Dict{Int,Vector{Int}}}
     #=
     As opposed to checking for conflict per pair of vertices, the idea is to use an occupancy list to indiciate whether a site has any conflict with its neighbors.
 
@@ -30,13 +30,13 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     =#
     site_list = parallel_locate(vertices, tree)
     neighbor_list = Vector{Vector{Int}}(undef,length(site_list))
-    occupancy = Vector{Vector{Int}}(undef, length(tree.simplices))
+    occupancy = Dict{Int,Vector{Int}}()
     Threads.@threads for i in 1:length(site_list)
-        neighbor_list[i] = filter(x->x ∉ site_list[i], unique(reduce(vcat, tree.neighbors_relation[site_list[i]])))
+        neighbor_list[i] = filter(x->x ∉ site_list[i], unique(reduce(vcat, map(x->tree.neighbors_relation[x],site_list[i]))))
     end
     for i in 1:length(site_list) # This might be able to be parallelized
         for neighbor in neighbor_list[i]
-            if !isdefined(occupancy,neighbor) 
+            if !haskey(occupancy, neighbor)
                 occupancy[neighbor] = Vector{Int}()
             end
             occupancy[neighbor] = push!(occupancy[neighbor], i)

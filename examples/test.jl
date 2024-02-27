@@ -11,7 +11,7 @@ const tmr = TimerOutput()
 
 Random.seed!(1234)
 
-n = 10000
+n = 1000
 n_dims = 3
 
 test_points = [rand(n_dims) for i in 1:n]
@@ -25,7 +25,8 @@ parallel_tree = deepcopy(tree)
 
 sites = locate(Vector{Int}(), test_points2[1], tree)
 
-for i in 1:100
-    println(i)
+for i in 1:n
     add_vertex!(tree, test_points[i], n_dims=n_dims)
 end
+
+site_list = parallel_locate(test_points2[1:20], tree)
