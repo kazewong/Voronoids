@@ -45,10 +45,15 @@ function insert_point!(tree::DelaunayTree, update::TreeUpdate)
     end
 
     # Update vertices_simplex
-    push!(tree.vertices_simplex, update.simplices_id)
+    push!(tree.vertices_simplex, Vector{Int}())
+    for i in 1:length(update.simplices)
+        for j in update.simplices[i]
+            push!(tree.vertices_simplex[j], update.simplices_id[i])
+        end
+    end
     for i in 1:length(killed_sites_ids)
         for j in tree.simplices[killed_sites_ids[i]]
-            tree.vertices_simplex[j] = filter(x->x!=killed_sites_ids[i], tree.vertices_simplex[j])
+            tree.vertices_simplex[j] = tree.vertices_simplex[j][tree.vertices_simplex[j] .!= killed_sites_ids[i]]
         end
     end
 

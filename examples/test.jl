@@ -24,14 +24,8 @@ end
 parallel_tree = deepcopy(tree)
 
 sites = locate(Vector{Int}(), test_points2[1], tree)
-# updates = make_update(test_points[1], tree, n_dims=n_dims)
-# insert_point!(tree, updates)
-# updates2 = make_update(test_points[2], tree, n_dims=n_dims)
-# insert_point!(tree, updates2)
-# updates2 = make_update(test_points[3], tree, n_dims=n_dims)
-# insert_point!(tree, updates)
 
-for i in 1:10
+for i in 1:100
     println(i)
     add_vertex!(tree, test_points[i], n_dims=n_dims)
 end
