@@ -72,21 +72,6 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
 end
 
 
-function make_new_neighbors(simplices::Vector{Vector{Int}}; n_dims::Int=3)::Vector{Tuple{Int, Int}}
-    length_simplices = length(simplices)
-    output = Vector{Tuple{Int, Int}}()
-    for i in 1:length_simplices
-        for j in i+1:length_simplices
-            facet = common_facet(simplices[i], simplices[j])
-            if length(facet) == n_dims
-                push!(output, (i, j))
-                push!(output, (j, i))
-            end
-        end
-    end
-    return output
-end
-
 function new_simplex(sites::Vector{Int}, vertex::Vector{Float64}, vertex_id::Int, tree::DelaunayTree; n_dims::Int=3)
     simplices = Vector{Vector{Int}}()
     centers = Vector{Vector{Float64}}()

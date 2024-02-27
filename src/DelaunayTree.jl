@@ -25,7 +25,7 @@ end
 
 function insert_point!(tree::DelaunayTree, update::TreeUpdate)
     new_vertex_id = length(tree.vertices) + 1
-    new_simplices_id = length(tree.simplices) - length(update.killed_sites) + update.simplices_id
+    new_simplices_id = length(tree.simplices) .- length(update.killed_sites) .+ update.simplices_id
     killed_sites_id = sort(update.killed_sites)
     killed_sites = tree.simplices[killed_sites_id]
     push!(tree.vertices, update.vertices)

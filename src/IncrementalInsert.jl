@@ -128,7 +128,7 @@ end
 
 function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
     simplex_id = find_nearest_simplex(vertex, tree)
-    for id in simplex_id[tree.dead[simplex_id] .== false]
+    for id in simplex_id
         if in_sphere(id, vertex, tree)
             push!(output, id)
             find_all_neighbors(output, id, vertex, tree)
@@ -137,61 +137,64 @@ function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree
     return unique(output)
 end
 
-function insert_point(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
-    killed_nodes = locate(Vector{Int}(), point, tree)
-    new_node_id = Vector{Int}()
-    push!(tree.vertices_simplex, Vector{Int}())
-    vertex_id = length(tree.vertices) + 1
-    for node_id in killed_nodes
-        if !tree.dead[node_id]
-            tree.dead[node_id] = true
-            for neighbor_id in tree.neighbors_relation[node_id]
-                if !in_sphere(neighbor_id, point, tree)
-                    facet = common_facet(tree.simplices[node_id], tree.simplices[neighbor_id], n_dims=n_dims)
-                    if length(facet) == n_dims
-                        # Creating new node
-                        new_id = length(tree.simplices) + 1
-                        push!(new_node_id, new_id)
-                        push!(tree.simplices, [vertex_id, facet...])
-                        push!(tree.dead, false)
-                        center, radius = circumsphere([point, tree.vertices[facet]...], n_dims=n_dims)
-                        push!(tree.centers, center)
-                        push!(tree.radii, radius)
-                        push!(tree.neighbors_relation, [neighbor_id])
-
-                        push!(tree.vertices_simplex[vertex_id], new_id)
-                        for i in facet
-                            push!(tree.vertices_simplex[i], new_id)
-                        end
-
-                        # Updating neighbor relationship for the neighbor of the killed node
-                        killed_node_id = findfirst(x->x==node_id, tree.neighbors_relation[neighbor_id])
-                        if killed_node_id !== nothing
-                            tree.neighbors_relation[neighbor_id][killed_node_id] = new_id
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    #=
-    This part is O(n^2) and can be optimized.
-    I think by checking the vertices and make use of the vertice to simplex assignment, this could be reduced to O(n)
-    =#
-    for i in 1:length(new_node_id)
-        for j in i+1:length(new_node_id)
-            new_id1 = new_node_id[i]
-            new_id2 = new_node_id[j]
-            facet = common_facet(tree.simplices[new_id1], tree.simplices[new_id2], n_dims=n_dims)
+function get_new_simplices(site::Int, vertex::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)
+    simplices = Vector{Vector{Int}}()
+    centers = Vector{Vector{Float64}}()
+    radii = Vector{Float64}()
+    neighbors_id = Vector{Tuple{Int, Int}}()
+    for neighbor_id in tree.neighbors_relation[site]
+        if !in_sphere(neighbor_id, vertex, tree)
+            facet = common_facet(tree.simplices[site], tree.simplices[neighbor_id], n_dims=n_dims)
             if length(facet) == n_dims
-                push!(tree.neighbors_relation[new_id1], new_id2)
-                push!(tree.neighbors_relation[new_id2], new_id1)
+                push!(simplices, [length(tree.vertices) + 1, facet...])
+                center, radius = circumsphere([vertex, tree.vertices[facet]...], n_dims=n_dims)
+                push!(centers, center)
+                push!(radii, radius)
+                push!(neighbors_id, (neighbor_id, site))
             end
         end
     end
-    push!(tree.vertices,point)
-    add_point!(tree.kdtree, point)
+    return (simplices, centers, radii, neighbors_id)
 end
 
-export check_delaunay, in_sphere, find_all_neighbors, find_nearest_simplex, locate, common_facet, insert_point, circumsphere
+function make_new_neighbors(simplices::Vector{Vector{Int}}; n_dims::Int=3)::Vector{Tuple{Int, Int}}
+    length_simplices = length(simplices)
+    output = Vector{Tuple{Int, Int}}()
+    for i in 1:length_simplices
+        for j in i+1:length_simplices
+            facet = common_facet(simplices[i], simplices[j])
+            if length(facet) == n_dims
+                push!(output, (i, j))
+                push!(output, (j, i))
+            end
+        end
+    end
+    return output
+end
+
+function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
+    killed_sites = locate(Vector{Int}(), point, tree)
+    simplices = Vector{Vector{Vector{Int}}}(undef, length(killed_sites))
+    simplices_id = Vector{Vector{Int}}(undef, length(killed_sites))
+    centers = Vector{Vector{Vector{Float64}}}(undef, length(killed_sites))
+    radii = Vector{Vector{Float64}}(undef, length(killed_sites))
+    neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(killed_sites))
+    Threads.@threads for i in 1:length(killed_sites)
+        simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, tree, n_dims=n_dims)
+        simplices_id[i] = collect(length(tree.simplices)+1:length(tree.simplices)+length(simplices[i]))
+    end
+    simplices = vcat(simplices...)
+    simplices_id = vcat(simplices_id...)
+    centers = vcat(centers...)
+    radii = vcat(radii...)
+    neighbors_id = vcat(neighbors_id...)
+    new_neighbors_id = make_new_neighbors(simplices, n_dims=n_dims)
+    return TreeUpdate(point, killed_sites, simplices, simplices_id, centers, radii, neighbors_id, new_neighbors_id)
+end
+
+function add_vertex!(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
+    update = make_update(point, tree, n_dims=n_dims)
+    insert_point!(tree, update)
+end
+
+export circumsphere, check_delaunay, in_sphere, find_all_neighbors, find_nearest_simplex, locate, common_facet, get_new_simplices, make_new_neighbors, make_update, add_vertex!
