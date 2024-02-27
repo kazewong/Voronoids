@@ -16,19 +16,46 @@ struct TreeUpdate
     vertices::Vector{Float64} # New vertices
     killed_sites::Vector{Int} # id of the killed simplices
     simplices::Vector{Vector{Int}} # Vertices of the new simplices
+    simplices_id::Vector{Int} # Id of the new simplices. Relatively indexed, i.e. max(simplices_id) = length(simplices)
     centers::Vector{Vector{Float64}} # Centers of the circumsphere of the new simplices
     radii::Vector{Float64} # Radii of the circumsphere of the new simplices
     neighbors_id::Vector{Tuple{Int, Int}} # (Neighbor Id, killed site Id)
-    new_neighbors_id::Vector{Tuple{Int, Int}} # (New site Id1, New site Id2)
+    new_neighbors_id::Vector{Tuple{Int, Int}} # (New site Id1, New site Id2). Relatively indexed.
 end
 
 function insert_point!(tree::DelaunayTree, update::TreeUpdate)
+    new_vertex_id = length(tree.vertices) + 1
+    new_simplices_id = length(tree.simplices) - length(update.killed_sites) + update.simplices_id
+    killed_sites_id = sort(update.killed_sites)
+    killed_sites = tree.simplices[killed_sites_id]
     push!(tree.vertices, update.vertices)
     add_point!(tree.kdtree, update.vertices)
-    deleteat!(tree.simplices, update.killed_sites)
-    deleteat!(tree.centers, update.killed_sites)
-    deleteat!(tree.radii, update.killed_sites)
-    deleteat!(tree.neighbors_relation, update.killed_sites)
+
+    # Update neighbor relation with killed sites
+    for i in 1:length(update.neighbors_id)
+        neighbor_id, killed_id = update.neighbors_id[i]
+        tree.neighbors_relation[neighbor_id][tree.neighbors_relation[neighbor_id] .== killed_id] .= new_simplices_id
+    end
+
+    # Update neighbor relation between new sites
+    push!(tree.neighbors_relation, collect(map(x->[x[1]], neighbors_id))...)
+    for i in 1:length(new_neighbors_id)
+        push!(tree.neighbors_relation[new_simplices_id[new_neighbors_id[i][1]]], new_simplices_id[new_neighbors_id[i][2]])
+    end
+
+    # Update vertices_simplex
+    push!(tree.vertices_simplex, new_simplices_id)
+    for i in 1:length(killed_sites)
+        for j in killed_sites[i]
+            tree.vertices_simplex[j] = filter(x->x!=killed_sites_id[i], tree.vertices_simplex[j])
+        end
+    end
+
+    # Remove killed sites
+    deleteat!(tree.simplices, killed_sites_id)
+    deleteat!(tree.centers, killed_sites_id)
+    deleteat!(tree.radii, killed_sites_id)
+    deleteat!(tree.neighbors_relation, killed_sites_id)
 end
 
 function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
