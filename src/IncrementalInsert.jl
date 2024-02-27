@@ -175,21 +175,23 @@ end
 function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
     killed_sites = locate(Vector{Int}(), point, tree)
     simplices = Vector{Vector{Vector{Int}}}(undef, length(killed_sites))
-    simplices_id = Vector{Vector{Int}}(undef, length(killed_sites))
+    simplices_ids = Vector{Vector{Int}}(undef, length(killed_sites))
     centers = Vector{Vector{Vector{Float64}}}(undef, length(killed_sites))
     radii = Vector{Vector{Float64}}(undef, length(killed_sites))
     neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(killed_sites))
-    Threads.@threads for i in 1:length(killed_sites)
+    simplices_counter = length(tree.simplices)
+    for i in 1:length(killed_sites)
         simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, tree, n_dims=n_dims)
-        simplices_id[i] = collect(length(tree.simplices)+1:length(tree.simplices)+length(simplices[i]))
+        simplices_ids[i] = collect(simplices_counter:simplices_counter+length(simplices[i]))
+        simplices_counter += length(simplices[i])+1
     end
     simplices = vcat(simplices...)
-    simplices_id = vcat(simplices_id...)
+    simplices_ids = vcat(simplices_ids...)[2:end]
     centers = vcat(centers...)
     radii = vcat(radii...)
     neighbors_id = vcat(neighbors_id...)
     new_neighbors_id = make_new_neighbors(simplices, n_dims=n_dims)
-    return TreeUpdate(point, killed_sites, simplices, simplices_id, centers, radii, neighbors_id, new_neighbors_id)
+    return TreeUpdate(point, killed_sites, simplices, simplices_ids, centers, radii, neighbors_id, new_neighbors_id)
 end
 
 function add_vertex!(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
