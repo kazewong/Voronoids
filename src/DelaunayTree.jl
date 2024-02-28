@@ -115,4 +115,4 @@ function initialize_tree_2d(positions::Vector{Vector{Float64}})::DelaunayTree
     return DelaunayTree(vertices, kd_tree, vertices_simplex, simplicies, centers, radii, neighbors_relation, 4)
 end
 
-export initialize_tree_2d, initialize_tree_3d, DelaunayTree, insert_point!
+export initialize_tree_2d, initialize_tree_3d, DelaunayTree, insert_point!, TreeUpdate

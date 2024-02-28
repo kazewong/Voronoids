@@ -21,13 +21,32 @@ if n_dims == 3
 else
     tree = initialize_tree_2d(test_points)
 end
-parallel_tree = deepcopy(tree)
-
 sites = locate(Vector{Int}(), test_points2[1], tree)
 
 for i in 1:n
     add_vertex!(tree, test_points[i], n_dims=n_dims)
 end
 
-# site_list, neighbor_list, occupancy = identify_conflicts(test_points2[1:128], tree)
-# groups = group_points(site_list, neighbor_list, occupancy)
+parallel_tree = deepcopy(tree)
+
+site_list, neighbor_list, occupancy = identify_conflicts(test_points2[1:128], tree)
+groups = group_points(site_list, neighbor_list, occupancy)
+
+const update_channel = Channel{TreeUpdate}(128);
+
+function schedule()
+    for group in groups
+        if length(group) == 1
+            update = make_update(test_points[group[1]], site_list[group[1]], tree, n_dims=n_dims)
+            put!(update_channel, update)
+        end
+    end
+end
+
+@async schedule()
+
+for i in 1:update_channel.n_avail_items
+    println(i)
+    update = take!(update_channel)
+    insert_point!(tree, update)
+end
