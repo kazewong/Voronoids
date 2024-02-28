@@ -32,7 +32,7 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     neighbor_list = Vector{Vector{Int}}(undef,length(site_list))
     occupancy = Dict{Int,Vector{Int}}()
     Threads.@threads for i in 1:length(site_list)
-        neighbor_list[i] = filter(x->x ∉ site_list[i], unique(mapreduce(x->tree.neighbors_relation[x], vcat, site_list[i])))
+        neighbor_list[i] = unique(mapreduce(x->tree.neighbors_relation[x], vcat, site_list[i]))
     end
     for i in 1:length(site_list) # This might be able to be parallelized
         for neighbor in neighbor_list[i]

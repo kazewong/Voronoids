@@ -45,8 +45,15 @@ end
 
 @async schedule()
 
+b = map(x->neighbor_list[x[1]],filter(x->length(x)==1, groups))
+c = map(x->site_list[x[1]],filter(x->length(x)==1, groups))
+all(map(y->all(isempty.(map(x->intersect(b[y],b[x]), deleteat!(collect(1:length(b)),y)))), 1:length(b)))
+all(map(y->all(isempty.(map(x->intersect(c[y],c[x]), deleteat!(collect(1:length(c)),y)))), 1:length(c)))
+all(map(y->all(isempty.(map(x->intersect(b[y],c[x]), deleteat!(collect(1:length(c)),y)))), 1:length(b)))
+
+killed = Vector{Int}()
 for i in 1:update_channel.n_avail_items
-    println(i)
     update = take!(update_channel)
+    # killed = vcat(killed, update.killed_sites)
     insert_point!(tree, update)
 end
