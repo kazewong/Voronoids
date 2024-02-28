@@ -29,4 +29,5 @@ for i in 1:n
     add_vertex!(tree, test_points[i], n_dims=n_dims)
 end
 
-site_list = identify_conflicts(test_points2[1:1024], tree)
+# site_list, neighbor_list, occupancy = identify_conflicts(test_points2[1:128], tree)
+# groups = group_points(site_list, neighbor_list, occupancy)

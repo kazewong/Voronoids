@@ -32,7 +32,7 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     neighbor_list = Vector{Vector{Int}}(undef,length(site_list))
     occupancy = Dict{Int,Vector{Int}}()
     Threads.@threads for i in 1:length(site_list)
-        neighbor_list[i] = filter(x->x ∉ site_list[i], unique(reduce(vcat, map(x->tree.neighbors_relation[x],site_list[i]))))
+        neighbor_list[i] = filter(x->x ∉ site_list[i], unique(mapreduce(x->tree.neighbors_relation[x], vcat, site_list[i])))
     end
     for i in 1:length(site_list) # This might be able to be parallelized
         for neighbor in neighbor_list[i]
@@ -45,9 +45,9 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     return site_list, neighbor_list, occupancy
 end
 
-function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, occupancy::Vector{Vector{Int}},vertex_id::Int)::Vector{Int}
+function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, occupancy::Dict{Int, Vector{Int}},vertex_id::Int)::Vector{Int}
     push!(result, vertex_id)
-    conflict_list = unique(reduce(vcat, occupancy[neighbors[vertex_id]]))
+    conflict_list = unique(mapreduce(x->occupancy[x], vcat, neighbors[vertex_id]))
     for conflict in conflict_list
         if conflict ∉ result
             result = find_conflict_group(result, neighbors, occupancy, conflict)
@@ -56,7 +56,7 @@ function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}
     return result
 end
 
-function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}}, occupancy::Vector{Vector{Int}})::Vector{Vector{Int}}
+function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}}, occupancy::Dict{Int, Vector{Int}})::Vector{Vector{Int}}
     #=
     This function groups the vertices which occupies the same simplices together.
     =#

@@ -168,8 +168,8 @@ function make_new_neighbors(simplices::Vector{Vector{Int}}, simplices_id:: Vecto
     return output
 end
 
-function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
-    killed_sites = locate(Vector{Int}(), point, tree)
+
+function make_update(point::Vector{Float64}, killed_sites:: Vector{Int}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
     simplices = Vector{Vector{Vector{Int}}}(undef, length(killed_sites))
     simplices_ids = Vector{Vector{Int}}(undef, length(killed_sites))
     centers = Vector{Vector{Vector{Float64}}}(undef, length(killed_sites))
@@ -188,6 +188,11 @@ function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3):
     neighbors_id = vcat(neighbors_id...)
     new_neighbors_id = make_new_neighbors(simplices, simplices_ids, n_dims=n_dims)
     return TreeUpdate(point, killed_sites, simplices, simplices_ids, centers, radii, neighbors_id, new_neighbors_id)
+end
+
+function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
+    killed_sites = locate(Vector{Int}(), point, tree)
+    return make_update(point, killed_sites, tree, n_dims=n_dims)
 end
 
 function add_vertex!(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
