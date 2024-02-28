@@ -29,10 +29,12 @@ end
 
 parallel_tree = deepcopy(tree)
 
-site_list, neighbor_list, occupancy = identify_conflicts(test_points2[1:128], tree)
+n_parallel = 256
+
+site_list, neighbor_list, occupancy = identify_conflicts(test_points2[1:n_parallel], tree)
 groups = group_points(site_list, neighbor_list, occupancy)
 
-const update_channel = Channel{TreeUpdate}(128);
+const update_channel = Channel{TreeUpdate}(n_parallel)
 
 function schedule()
     for group in groups
