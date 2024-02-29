@@ -72,7 +72,6 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
 end
 
 function queue_points!(channel::Channel{TreeUpdate}, points::Vector{Vector{Float64}}, tree::DelaunayTree, n_dims::Int)
-    
     for group in groups
         if length(group) == 1
             update = make_update(points[group[1]], site_list[group[1]], tree, n_dims=n_dims)

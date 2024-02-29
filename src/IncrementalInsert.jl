@@ -158,7 +158,7 @@ function make_new_neighbors(simplices::Vector{Vector{Int}}, simplices_id:: Vecto
     output = Vector{Tuple{Int, Int}}()
     for i in 1:length_simplices
         for j in i+1:length_simplices
-            facet = common_facet(simplices[i], simplices[j])
+            facet = common_facet(simplices[i], simplices[j], n_dims=n_dims)
             if length(facet) == n_dims
                 push!(output, (simplices_id[i], simplices_id[j]))
                 push!(output, (simplices_id[j], simplices_id[i]))
