@@ -39,7 +39,7 @@ const update_channel = Channel{TreeUpdate}(n_parallel)
 function schedule()
     for group in groups
         if length(group) == 1
-            update = make_update(test_points[group[1]], site_list[group[1]], tree, n_dims=n_dims)
+            update = make_update(test_points2[group[1]], site_list[group[1]], tree, n_dims=n_dims)
             put!(update_channel, update)
         end
     end
