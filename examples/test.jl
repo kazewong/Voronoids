@@ -36,16 +36,16 @@ groups = group_points(site_list, neighbor_list, occupancy)
 
 const update_channel = Channel{TreeUpdate}(n_parallel)
 
-function schedule()
+function schedule(channel::Channel{TreeUpdate}, points::Vector{Vector{Float64}}, groups::Vector{Vector{Int}}, site_list::Vector{Vector{Int}}, tree::DelaunayTree, n_dims::Int)
     for group in groups
         if length(group) == 1
-            update = make_update(test_points2[group[1]], site_list[group[1]], tree, n_dims=n_dims)
-            put!(update_channel, update)
+            update = make_update(points[group[1]], site_list[group[1]], tree, n_dims=n_dims)
+            put!(channel, update)
         end
     end
 end
 
-@async schedule()
+@async schedule(update_channel, test_points2[1:n_parallel], groups, site_list, tree, n_dims)
 
 b = map(x->neighbor_list[x[1]],filter(x->length(x)==1, groups))
 c = map(x->site_list[x[1]],filter(x->length(x)==1, groups))

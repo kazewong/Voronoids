@@ -71,5 +71,18 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
     return output
 end
 
+function queue_points!(channel::Channel{TreeUpdate}, points::Vector{Vector{Float64}}, tree::DelaunayTree, n_dims::Int)
+    
+    for group in groups
+        if length(group) == 1
+            update = make_update(points[group[1]], site_list[group[1]], tree, n_dims=n_dims)
+            put!(channel, update)
+        end
+    end
+end
+
+function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree, n_parallel::Int; n_dims::Int=3)
+    update_channel = Channel{TreeUpdate}(n_parallel)
+end
 
 export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points
