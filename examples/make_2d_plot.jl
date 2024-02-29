@@ -33,16 +33,23 @@ function plot_circle(center::Vector{Float64}, radius::Float64)
     return x, y
 end
 
-scatter(map(x -> x[1], test_points), map(x -> x[2], test_points), c=distinguishable_colors(n)) 
+function make_plot(n_step::Int, tree::DelaunayTree)
+    n = length(tree.vertices[7:7+n_step-1])
+    colors = distinguishable_colors(n)
+    vertices = tree.vertices[7:7+n_step-1]
+    p = scatter(map(x -> x[1], vertices), map(x -> x[2], vertices), c=colors) 
 
-for ids in collect(keys(tree.simplices))
-    if all(tree.simplices[ids].>6)
-        x,y = plot_simplex_2d(ids, tree)
-        p = plot!(x, y, size=(800, 800))
-        x,y = plot_circle(tree.centers[ids], tree.radii[ids])
-        p = plot!(x, y, size=(800, 800))
+    filter_simplices = filter(ids -> all(tree.simplices[ids].<6+n_step) && !all(tree.simplices[ids].<6) , collect(keys(tree.simplices)))
+    for (ids, c) in zip(filter_simplices, colors)
+            x,y = plot_simplex_2d(ids, tree)
+            p = plot!(x, y, size=(800, 800))
+            x,y = plot_circle(tree.centers[ids], tree.radii[ids])
+            p = plot!(x, y, size=(800, 800))
     end
+    return p
 end
+
+p = make_plot(n, tree)
 
 display(p)
 # x,y = plot_simplex_2d(1, tree)
