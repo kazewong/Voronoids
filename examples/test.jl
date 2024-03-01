@@ -34,7 +34,10 @@ n_parallel = 256
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()
 channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}(n_parallel)
-t1 = Threads.@spawn queue_multiple_points!(channel, test_points2[1:256], occupancy, parallel_tree, lk, batch_size=n_parallel)
+t1 = Threads.@spawn queue_multiple_points!(channel, test_points2[1:256*4], occupancy, parallel_tree, lk, batch_size=n_parallel)
+
+sites, neighbors = identify_conflicts!(test_points2[1:256*4], occupancy, parallel_tree)
+
 t2 = consume_points!(channel, parallel_tree, t1, occupancy, lk, n_dims)
 println(length(parallel_tree.vertices))
 # t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)

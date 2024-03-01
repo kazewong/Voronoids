@@ -17,31 +17,24 @@ function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree):
     return output
 end
 
-function identify_conflicts!(vertices::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}}}
-    #=
-    As opposed to checking for conflict per pair of vertices, the idea is to use an occupancy list to indiciate whether a site has any conflict with its neighbors.
-
-    This involves populating the occupancy list with the site indices, which has complexity O(n) as opposed to O(n^2) for the pair-wise check.
-
-    The output contains the indices of vertices which occupies a certain simplex, which can be used to trace back to which vertices is a particular vertex conflicting with.
-
-    This will benefit from pruning the dead simplices, which is not implemented yet.
-
-    =#
+function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}}}
     site_list = parallel_locate(vertices, tree)
     neighbor_list = Vector{Vector{Int}}(undef,length(site_list))
     Threads.@threads for i in 1:length(site_list)
         neighbor_list[i] = unique(mapreduce(x->tree.neighbors_relation[x], vcat, site_list[i]))
     end
-    for i in 1:length(site_list) # This might be able to be parallelized
-        for neighbor in neighbor_list[i]
+    return site_list, neighbor_list
+end
+
+function add_to_occupancy!(occupancy::Dict{Int, Vector{Int}}, sites::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}})
+    for i in 1:length(sites) # This might be able to be parallelized
+        for neighbor in neighbors[i]
             if !haskey(occupancy, neighbor)
                 occupancy[neighbor] = Vector{Int}()
             end
             occupancy[neighbor] = push!(occupancy[neighbor], i)
         end
     end
-    return site_list, neighbor_list
 end
 
 function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, occupancy::Dict{Int, Vector{Int}},vertex_id::Int)::Vector{Int}
@@ -73,8 +66,9 @@ end
 function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
     partition = Iterators.partition(1:length(points), batch_size)
     for chunk in partition
+        site_list, neighbor_list = identify_conflicts(points[chunk], tree)
         lock(lk)
-        site_list, neighbor_list = identify_conflicts!(points[chunk], occupancy, tree)
+        add_to_occupancy(occupancy, site_list, neighbor_list)
         unlock(lk)
         groups = group_points(site_list, neighbor_list, occupancy)
         for i in 1:length(groups)
@@ -116,4 +110,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts!, find_conflict_group, group_points, queue_multiple_points!, consume_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_points!, parallel_insert!
