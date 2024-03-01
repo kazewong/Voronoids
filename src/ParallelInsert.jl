@@ -89,18 +89,20 @@ function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, V
     println("Done queuing")
 end
 
-function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, occupancy::Dict{Int, Vector{Int}},lock::ReentrantLock, n_dims::Int)
+
+function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     while !istaskdone(queuing) || !isempty(channel)
         points = take!(channel)
         if points[1][2] == [-1.]
             break
         end
         if length(points) > 1
-            serial_insert!(collect(map(x->x[1],points)), tree, n_dims=n_dims)
+            Threads.@spawn serial_insert!(collect(map(x->x[1],points)), tree, lk, n_dims=n_dims)
         else
-            insert_point!(tree, make_update(points[1][1], points[1][2], tree, n_dims=n_dims))
+            Threads.@spawn add_vertex!(tree, points[1][1], lk, n_dims=n_dims)
         end
     end
+    println("Done consuming")
 end
 
 
@@ -109,8 +111,8 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     lk = ReentrantLock()
     occupancy = Dict{Int, Vector{Int}}()
 
-    t1 = @async queue_multiple_points!(update_channel, points, occupancy, tree, lk)
-    t2 = @async consume_points!(update_channel, tree, t1, occupancy, lk, n_dims)
+    t1 = Threads.@spawn queue_multiple_points!(update_channel, points, occupancy, tree, lk)
+    t2 = consume_points!(update_channel, tree, t1, occupancy, lk, n_dims)
     return update_channel, t1, t2
 end
 
