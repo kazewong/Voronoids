@@ -71,17 +71,35 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
     return output
 end
 
-function queue_points!(channel::Channel{TreeUpdate}, points::Vector{Vector{Float64}}, tree::DelaunayTree, n_dims::Int)
-    for group in groups
-        if length(group) == 1
-            update = make_update(points[group[1]], site_list[group[1]], tree, n_dims=n_dims)
-            put!(channel, update)
+function queue_multiple_points!(channel::Channel{Vector{TreeUpdate}}, points::Vector{Vector{Float64}}, sites::Vector{Vector{Int}}, groups::Vector{Vector{Int}}, tree::DelaunayTree, n_dims::Int)
+    for i in 1:length(groups)
+        updates = Vector{TreeUpdate}()
+        if length(groups[i]) == 1 
+            for j in 1:length(groups[i])
+                push!(updates, make_update(points[j], sites[j], tree, n_dims=n_dims))
+            end
+            put!(channel, updates)
+        end
+    end
+end
+
+function consume_updates!(channel::Channel{Vector{TreeUpdate}}, tree::DelaunayTree, queuing::Task)
+    while !istaskdone(queuing) || !isempty(channel)
+        updates = take!(channel)
+        for update in updates
+            println("Inserting $(length(update.vertices)) vertices")
+            insert_point!(tree, update)
         end
     end
 end
 
 function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree, n_parallel::Int; n_dims::Int=3)
-    update_channel = Channel{TreeUpdate}(n_parallel)
+    update_channel = Channel{Vector{TreeUpdate}}(n_parallel)
+    site_list, neighbor_list, occupancy = identify_conflicts(points[1:n_parallel], tree)
+    groups = group_points(site_list, neighbor_list, occupancy)
+    t1 = @async queue_multiple_points!(update_channel, points[1:n_parallel], site_list, groups, tree, n_dims)
+    # t2 = @async consume_updates!(update_channel, tree, t1)
+    return update_channel, t1#, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_updates!, parallel_insert!
