@@ -200,4 +200,10 @@ function add_vertex!(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
     insert_point!(tree, update)
 end
 
+function serial_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)
+    for point in points
+        add_vertex!(tree, point, n_dims=n_dims)
+    end
+end
+
 export circumsphere, check_delaunay, in_sphere, find_all_neighbors, find_nearest_simplex, locate, common_facet, get_new_simplices, make_new_neighbors, make_update, add_vertex!

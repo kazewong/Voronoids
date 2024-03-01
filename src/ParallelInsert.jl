@@ -71,35 +71,36 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
     return output
 end
 
-function queue_multiple_points!(channel::Channel{Vector{TreeUpdate}}, points::Vector{Vector{Float64}}, sites::Vector{Vector{Int}}, groups::Vector{Vector{Int}}, tree::DelaunayTree, n_dims::Int)
+function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}, points::Vector{Vector{Float64}}, sites::Vector{Vector{Int}}, groups::Vector{Vector{Int}}, tree::DelaunayTree)
     for i in 1:length(groups)
-        updates = Vector{TreeUpdate}()
-        if length(groups[i]) == 1 
-            for j in 1:length(groups[i])
-                push!(updates, make_update(points[groups[i][j]], sites[groups[i][j]], tree, n_dims=n_dims))
-            end
-            put!(channel, updates)
+        output = Vector{Tuple{Vector{Float64}, Vector{Int}}}()
+        for j in 1:length(groups[i])
+            push!(output, (points[groups[i][j]], sites[groups[i][j]]))
         end
+        put!(channel, output)
     end
     println("Done queuing")
 end
 
-function consume_updates!(channel::Channel{Vector{TreeUpdate}}, tree::DelaunayTree, queuing::Task)
+function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, n_dims::Int)
     while !istaskdone(queuing) || !isempty(channel)
-        updates = take!(channel)
-        for update in updates
-            insert_point!(tree, update)
+        points = take!(channel)
+        if length(points) > 1
+            serial_insert!(collect(map(x->x[1],points)), tree, n_dims=n_dims)
+        else
+            insert_point!(tree, make_update(points[1][1], points[1][2], tree, n_dims=n_dims))
         end
     end
 end
 
-function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree, n_parallel::Int; n_dims::Int=3)
-    update_channel = Channel{Vector{TreeUpdate}}(n_parallel)
-    site_list, neighbor_list, occupancy = identify_conflicts(points[1:n_parallel], tree)
+
+function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)
+    update_channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}(length(points))
+    site_list, neighbor_list, occupancy = identify_conflicts(points, tree)
     groups = group_points(site_list, neighbor_list, occupancy)
-    t1 = @async queue_multiple_points!(update_channel, points[1:n_parallel], site_list, groups, tree, n_dims)
-    t2 = @async consume_updates!(update_channel, tree, t1)
+    t1 = @async queue_multiple_points!(update_channel, points, site_list, groups, tree)
+    t2 = @async consume_points!(update_channel, tree, t1, n_dims)
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_updates!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_points!, parallel_insert!
