@@ -124,6 +124,10 @@ end
 
 function locate(output::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
     simplex_id = find_nearest_simplex(vertex, tree)
+    return locate(output, simplex_id, vertex, tree)
+end
+
+function locate(output::Vector{Int}, simplex_id::Vector{Int}, vertex::Vector{Float64}, tree::DelaunayTree)::Vector{Int}
     for id in simplex_id
         if in_sphere(id, vertex, tree)
             push!(output, id)

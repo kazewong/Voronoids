@@ -40,11 +40,11 @@ t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_
 
 channel, b, c = fetch(t)
 
-for i in 1:update_channel.n_avail_items
-    update = take!(update_channel)
-    println("Inserting $(length(update)) vertices")
-    for j in 1:length(update)
-        insert_point!(parallel_tree, update[j])
-    end
-    # insert_point!(tree, update[1])
-end
+# for i in 1:update_channel.n_avail_items
+#     update = take!(update_channel)
+#     println("Inserting $(length(update)) vertices")
+#     for j in 1:length(update)
+#         insert_point!(parallel_tree, update[j])
+#     end
+#     # insert_point!(tree, update[1])
+# end
