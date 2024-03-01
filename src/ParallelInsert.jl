@@ -17,7 +17,7 @@ function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree):
     return output
 end
 
-function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}},Dict{Int,Vector{Int}}}
+function identify_conflicts!(vertices::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree)::Tuple{Vector{Vector{Int}},Vector{Vector{Int}}}
     #=
     As opposed to checking for conflict per pair of vertices, the idea is to use an occupancy list to indiciate whether a site has any conflict with its neighbors.
 
@@ -30,7 +30,6 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     =#
     site_list = parallel_locate(vertices, tree)
     neighbor_list = Vector{Vector{Int}}(undef,length(site_list))
-    occupancy = Dict{Int,Vector{Int}}()
     Threads.@threads for i in 1:length(site_list)
         neighbor_list[i] = unique(mapreduce(x->tree.neighbors_relation[x], vcat, site_list[i]))
     end
@@ -42,7 +41,7 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
             occupancy[neighbor] = push!(occupancy[neighbor], i)
         end
     end
-    return site_list, neighbor_list, occupancy
+    return site_list, neighbor_list
 end
 
 function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, occupancy::Dict{Int, Vector{Int}},vertex_id::Int)::Vector{Int}
@@ -71,19 +70,26 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
     return output
 end
 
-function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}, points::Vector{Vector{Float64}}, sites::Vector{Vector{Int}}, groups::Vector{Vector{Int}}, tree::DelaunayTree)
-    for i in 1:length(groups)
-        output = Vector{Tuple{Vector{Float64}, Vector{Int}}}()
-        for j in 1:length(groups[i])
-            push!(output, (points[groups[i][j]], sites[groups[i][j]]))
+function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
+    partition = Iterators.partition(1:length(points), batch_size)
+    for chunk in partition
+        lock(lk)
+        site_list, neighbor_list = identify_conflicts!(points[chunk], occupancy, tree)
+        unlock(lk)
+        groups = group_points(site_list, neighbor_list, occupancy)
+        for i in 1:length(groups)
+            output = Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}()
+            for j in 1:length(groups[i])
+                push!(output, (points[groups[i][j]], site_list[groups[i][j]], neighbor_list[groups[i][j]]))
+            end
+            put!(channel, output)
         end
-        put!(channel, output)
     end
-    put!(channel, [([-1.], [-1])])
+    put!(channel, [([-1.], [-1], [-1])])
     println("Done queuing")
 end
 
-function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, n_dims::Int)
+function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, occupancy::Dict{Int, Vector{Int}},lock::ReentrantLock, n_dims::Int)
     while !istaskdone(queuing) || !isempty(channel)
         points = take!(channel)
         if points[1][2] == [-1.]
@@ -98,13 +104,14 @@ function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{I
 end
 
 
-function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)
-    update_channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}(length(points)+1)
-    site_list, neighbor_list, occupancy = identify_conflicts(points, tree)
-    groups = group_points(site_list, neighbor_list, occupancy)
-    t1 = @async queue_multiple_points!(update_channel, points, site_list, groups, tree)
-    t2 = @async consume_points!(update_channel, tree, t1, n_dims)
+function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
+    update_channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}(batch_size+1)
+    lk = ReentrantLock()
+    occupancy = Dict{Int, Vector{Int}}()
+
+    t1 = @async queue_multiple_points!(update_channel, points, occupancy, tree, lk)
+    t2 = @async consume_points!(update_channel, tree, t1, occupancy, lk, n_dims)
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts!, find_conflict_group, group_points, queue_multiple_points!, consume_points!, parallel_insert!
