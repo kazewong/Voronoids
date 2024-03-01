@@ -79,12 +79,16 @@ function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, V
         end
         put!(channel, output)
     end
+    put!(channel, [([-1.], [-1])])
     println("Done queuing")
 end
 
 function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, n_dims::Int)
     while !istaskdone(queuing) || !isempty(channel)
         points = take!(channel)
+        if points[1][2] == [-1.]
+            break
+        end
         if length(points) > 1
             serial_insert!(collect(map(x->x[1],points)), tree, n_dims=n_dims)
         else
@@ -95,7 +99,7 @@ end
 
 
 function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)
-    update_channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}(length(points))
+    update_channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}}}}(length(points)+1)
     site_list, neighbor_list, occupancy = identify_conflicts(points, tree)
     groups = group_points(site_list, neighbor_list, occupancy)
     t1 = @async queue_multiple_points!(update_channel, points, site_list, groups, tree)
