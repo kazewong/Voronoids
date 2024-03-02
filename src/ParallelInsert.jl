@@ -26,23 +26,23 @@ function identify_conflicts(vertices::Vector{Vector{Float64}}, tree::DelaunayTre
     return site_list, neighbor_list
 end
 
-function add_to_occupancy!(occupancy::Dict{Int, Vector{Int}}, sites::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}})
+function add_to_occupancy!(occupancy::Dict{Int, Vector{Int}}, sites::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}}, ids::Vector{Int})
     for i in 1:length(sites) # This might be able to be parallelized
         for neighbor in neighbors[i]
             if !haskey(occupancy, neighbor)
                 occupancy[neighbor] = Vector{Int}()
             end
-            occupancy[neighbor] = push!(occupancy[neighbor], i)
+            occupancy[neighbor] = push!(occupancy[neighbor], ids[i])
         end
     end
 end
 
-function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, occupancy::Dict{Int, Vector{Int}},vertex_id::Int)::Vector{Int}
+function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, vertex_id::Int, occupancy::Dict{Int, Vector{Int}})::Vector{Int}
     push!(result, vertex_id)
-    conflict_list = unique(mapreduce(x->occupancy[x], vcat, neighbors[vertex_id]))
+    conflict_list = unique(mapreduce(x->occupancy[x], vcat, neighbors[vertex_id % (length(neighbors)+1)]))
     for conflict in conflict_list
         if conflict ∉ result
-            result = find_conflict_group(result, neighbors, occupancy, conflict)
+            result = find_conflict_group(result, neighbors, conflict, occupancy)
         end
     end
     return result
@@ -56,7 +56,7 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
     checked = Vector{Int}()
     while length(checked) < length(site_list)
         vertex_id = findfirst(x->x ∉ checked, 1:length(site_list))
-        conflict_group = find_conflict_group(Vector{Int}(), neighbors, occupancy, vertex_id)
+        conflict_group = find_conflict_group(Vector{Int}(), neighbors, vertex_id, occupancy)
         push!(output, conflict_group)
         push!(checked, conflict_group...)
     end
@@ -68,13 +68,14 @@ function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, V
     for chunk in partition
         site_list, neighbor_list = identify_conflicts(points[chunk], tree)
         lock(lk)
-        add_to_occupancy(occupancy, site_list, neighbor_list)
+        add_to_occupancy!(occupancy, site_list, neighbor_list, collect(chunk))
         unlock(lk)
         groups = group_points(site_list, neighbor_list, occupancy)
         for i in 1:length(groups)
             output = Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}()
             for j in 1:length(groups[i])
-                push!(output, (points[groups[i][j]], site_list[groups[i][j]], neighbor_list[groups[i][j]]))
+                id = groups[i][j] % length(site_list) + 1
+                push!(output, (points[groups[i][j]], site_list[id], neighbor_list[id]))
             end
             put!(channel, output)
         end
