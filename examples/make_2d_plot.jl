@@ -2,6 +2,7 @@ using Revise
 using Voronoids
 using Plots
 using Random
+using NPZ
 
 function plot_simplex_2d(simplex_Id::Int, tree::DelaunayTree)
     x, y = [], []
@@ -70,15 +71,21 @@ Random.seed!(seed)
 
 n_dims = 2
 
-test_points = [rand(n_dims) for i in 1:n]
+test_points = [rand(n_dims) for i in 1:n_max]
 
 tree = initialize_tree_2d(test_points)
 
 plot_center = tree.centers[1]
 plot_radius = tree.radii[1]*0.5
 
-for i in 3:n_max
-    make_frame(i, true, plot_center=plot_center, plot_radius=plot_radius, seed=seed)
+for i in 1:n_max
+    add_vertex!(tree, test_points[i], n_dims=n_dims)
 end
 
-make_frame(n_max, false, name="frame_final_no_circle.png", plot_center=plot_center, plot_radius=plot_radius, seed=seed)
+npzwrite("tree.npz", Dict("vertices"=>reduce(hcat,tree.vertices), "centers"=>reduce(hcat,collect(values(tree.centers))), "radii"=>collect(values(tree.radii)), "keys"=>collect(keys(tree.simplices)), "values"=>reduce(hcat, collect(values(tree.simplices)))))
+
+# for i in 3:n_max
+#     make_frame(i, true, plot_center=plot_center, plot_radius=plot_radius, seed=seed)
+# end
+
+# make_frame(n_max, false, name="frame_final_no_circle.png", plot_center=plot_center, plot_radius=plot_radius, seed=seed)
