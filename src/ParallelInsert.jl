@@ -63,46 +63,54 @@ function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{I
     return output
 end
 
-function queue_multiple_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
+function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
     partition = Iterators.partition(1:length(points), batch_size)
     for chunk in partition
         site_list, neighbor_list = identify_conflicts(points[chunk], tree)
         lock(lk)
         add_to_occupancy!(occupancy, site_list, neighbor_list, collect(chunk))
         unlock(lk)
-        groups = group_points(site_list, neighbor_list, occupancy)
-        for i in 1:length(groups)
-            output = Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}()
-            for j in 1:length(groups[i])
-                id = groups[i][j] % length(site_list) + 1
-                push!(output, (points[groups[i][j]], site_list[id], neighbor_list[id]))
-            end
-            put!(channel, output)
+        for id in chunk
+            put!(channel, (chunk[id], points[chunk[id]], neighbor_list[id]))
         end
+        # groups = group_points(site_list, neighbor_list, occupancy)
+        # for i in 1:length(groups)
+        #     output = Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}()
+        #     for j in 1:length(groups[i])
+        #         id = groups[i][j] % length(site_list) + 1
+        #         push!(output, (points[groups[i][j]], site_list[id], neighbor_list[id]))
+        #     end
+        #     put!(channel, output)
+        # end
     end
-    put!(channel, [([-1.], [-1], [-1])])
+    put!(channel, (-1, [-1.], [-1]))
     println("Done queuing")
 end
 
+function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}, tree::DelaunayTree, lk::ReentrantLock, occupancy::Dict{Int, Vector{Int}}; n_dims::Int)
+    while !all(map(y->y[1]==id, map(x->occupancy[x],neighbors)))
+    end
+    lock(lk)
+        add_vertex!(tree, vertex, n_dims=n_dims)
+        map(x->popfirst!(occupancy[x]), neighbors)
+        println("Added vertex $id")
+    unlock(lk)
+end
 
-function consume_points!(channel::Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}, tree::DelaunayTree, queuing::Task, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
+function consume_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}, tree::DelaunayTree, queuing::Task, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     while !istaskdone(queuing) || !isempty(channel)
         points = take!(channel)
-        if points[1][2] == [-1.]
+        if points[1] == -1
             break
         end
-        if length(points) > 1
-            Threads.@spawn serial_insert!(collect(map(x->x[1],points)), tree, lk, n_dims=n_dims)
-        else
-            Threads.@spawn add_vertex!(tree, points[1][1], lk, n_dims=n_dims)
-        end
+        Threads.@spawn add_vertex!(points[1], points[2], points[3], tree, lk, occupancy, n_dims)
     end
     println("Done consuming")
 end
 
 
 function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
-    update_channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}(batch_size+1)
+    update_channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(batch_size+1)
     lk = ReentrantLock()
     occupancy = Dict{Int, Vector{Int}}()
 
@@ -111,4 +119,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_point!, parallel_insert!

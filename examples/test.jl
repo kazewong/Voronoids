@@ -33,8 +33,8 @@ n_parallel = 256
 
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()
-channel = Channel{Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}}(n_parallel)
-t1 = queue_multiple_points!(channel, test_points2[1:128*3], occupancy, parallel_tree, lk, batch_size=n_parallel)
+channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(n_parallel*2)
+t1 = queue_multiple_points!(channel, test_points2[1:n_parallel], occupancy, parallel_tree, lk, batch_size=n_parallel)
 
 sites, neighbors = identify_conflicts(test_points2[1:256], parallel_tree)
 group_points(sites, neighbors, occupancy)
