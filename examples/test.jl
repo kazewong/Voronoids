@@ -29,17 +29,17 @@ end
 
 parallel_tree = deepcopy(tree)
 
-n_parallel = 256
+n_parallel = 32
 
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()
-channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(n_parallel*2)
-t1 = queue_multiple_points!(channel, test_points2[1:n_parallel], occupancy, parallel_tree, lk, batch_size=n_parallel)
+channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(n_parallel*4)
+t1 = Threads.@spawn queue_multiple_points!(channel, test_points2[1:n_parallel*2], occupancy, parallel_tree, lk, batch_size=n_parallel)
 
-sites, neighbors = identify_conflicts(test_points2[1:256], parallel_tree)
-group_points(sites, neighbors, occupancy)
+# sites, neighbors = identify_conflicts(test_points2[1:n_parallel], parallel_tree)
+# groups = group_points(sites, neighbors, occupancy)
 
-t2 = consume_points!(channel, parallel_tree, t1, occupancy, lk, n_dims)
+t2 = Threads.@spawn consume_multiple_points!(channel, parallel_tree, t1, occupancy, lk, n_dims)
 println(length(parallel_tree.vertices))
 # t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)
 

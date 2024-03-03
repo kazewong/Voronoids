@@ -65,47 +65,61 @@ end
 
 function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
     partition = Iterators.partition(1:length(points), batch_size)
+    println("Size of partition: ", length(points))
     for chunk in partition
         site_list, neighbor_list = identify_conflicts(points[chunk], tree)
         lock(lk)
         add_to_occupancy!(occupancy, site_list, neighbor_list, collect(chunk))
         unlock(lk)
-        for id in chunk
-            put!(channel, (chunk[id], points[chunk[id]], neighbor_list[id]))
+        for i in 1:length(chunk)
+            put!(channel, (chunk[i], points[chunk[i]], neighbor_list[i]))
         end
-        # groups = group_points(site_list, neighbor_list, occupancy)
-        # for i in 1:length(groups)
-        #     output = Vector{Tuple{Vector{Float64}, Vector{Int}, Vector{Int}}}()
-        #     for j in 1:length(groups[i])
-        #         id = groups[i][j] % length(site_list) + 1
-        #         push!(output, (points[groups[i][j]], site_list[id], neighbor_list[id]))
-        #     end
-        #     put!(channel, output)
-        # end
     end
-    put!(channel, (-1, [-1.], [-1]))
+    # put!(channel, (-1, [-1.], [-1]))
     println("Done queuing")
 end
 
 function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}, tree::DelaunayTree, lk::ReentrantLock, occupancy::Dict{Int, Vector{Int}}; n_dims::Int)
-    while !all(map(y->y[1]==id, map(x->occupancy[x],neighbors)))
-    end
     lock(lk)
         add_vertex!(tree, vertex, n_dims=n_dims)
-        map(x->popfirst!(occupancy[x]), neighbors)
-        println("Added vertex $id")
+        for i in 1:length(neighbors)
+            popfirst!(occupancy[neighbors[i]])
+            if isempty(occupancy[neighbors[i]])
+                delete!(occupancy, neighbors[i])
+            end
+        end
     unlock(lk)
 end
 
 function consume_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}, tree::DelaunayTree, queuing::Task, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
-    while !istaskdone(queuing) || !isempty(channel)
-        points = take!(channel)
-        if points[1] == -1
-            break
+    wait_queue = Vector{Tuple{Int, Vector{Float64}, Vector{Int}}}()
+    tasks = Vector{Tuple{Int, Task}}()
+    while !istaskdone(queuing) || !isempty(channel) || !isempty(wait_queue)
+        if !isempty(channel)
+            points = take!(channel)
+            # if points[1] == -1
+            #     break
+            # end
+            if any(length.(map(x->occupancy[x],points[3])).!=1)
+                push!(wait_queue, points)
+            else
+                push!(tasks,(points[1],Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims)))
+            end
         end
-        Threads.@spawn add_vertex!(points[1], points[2], points[3], tree, lk, occupancy, n_dims)
+        if !isempty(wait_queue)
+            for i in 1:length(wait_queue)
+                if all(map(y->y[1]==wait_queue[i][1], map(x->occupancy[x],wait_queue[i][3])))
+                    points = popat!(wait_queue, i)
+                    push!(tasks,(points[1],Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims)))
+                end
+            end
+        end
     end
     println("Done consuming")
+    println("Number of vertices: ", length(tree.vertices))
+    println("is empty: ", isempty(channel))
+    println("is empty: ", isempty(wait_queue))
+    return tasks
 end
 
 
@@ -114,9 +128,9 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     lk = ReentrantLock()
     occupancy = Dict{Int, Vector{Int}}()
 
-    t1 = Threads.@spawn queue_multiple_points!(update_channel, points, occupancy, tree, lk)
-    t2 = consume_points!(update_channel, tree, t1, occupancy, lk, n_dims)
+    queue_multiple_points!(update_channel, points, occupancy, tree, lk)
+    consume_points!(update_channel, tree, t1, occupancy, lk, n_dims)
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_point!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_multiple_points!, parallel_insert!
