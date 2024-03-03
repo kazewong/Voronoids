@@ -174,6 +174,10 @@ end
 
 
 function make_update(point::Vector{Float64}, killed_sites:: Vector{Int}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
+    if length(killed_sites) == 0
+        println("Point: ", point)
+        throw(ArgumentError("The point is already in the Delaunay triangulation"))
+    end
     simplices = Vector{Vector{Vector{Int}}}(undef, length(killed_sites))
     simplices_ids = Vector{Vector{Int}}(undef, length(killed_sites))
     centers = Vector{Vector{Vector{Float64}}}(undef, length(killed_sites))
