@@ -78,9 +78,22 @@ function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vect
     println("Done queuing")
 end
 
+function queue_point!(channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}}, id::Int, vertex::Vector{Float64}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree, lk:: ReentrantLock)
+    neighbor = unique(map(x->tree.neighbors_relation[x], locate(Vector{Int}(), vertex, tree)))
+    lock(lk)
+        for neighbor in neighbors[i]
+            if !haskey(occupancy, neighbor)
+                occupancy[neighbor] = Vector{Int}()
+            end
+            occupancy[neighbor] = push!(occupancy[neighbor], ids[i])
+        end
+    unlock(lk)
+    put!(channel, (id, vertex, neighbor))
+end
+
 function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}, tree::DelaunayTree, lk::ReentrantLock, occupancy::Dict{Int, Vector{Int}}; n_dims::Int)
     lock(lk)
-        # if !in(vertex,tree.vertices)
+        if !in(vertex,tree.vertices)
             add_vertex!(tree, vertex, n_dims=n_dims)
             for i in 1:length(neighbors)
                 popfirst!(occupancy[neighbors[i]])
@@ -88,36 +101,34 @@ function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}
                 #     delete!(occupancy, neighbors[i])
                 # end
             end
-        # end
+        end
     unlock(lk)
 end
 
 function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     wait_queue = Vector{Tuple{Int, Vector{Float64}, Vector{Int}}}()
     inserted_points = 0
-    while !isempty(channel) || !isempty(wait_queue) || inserted_points < n_points
-        if !isempty(channel)
-            points = take!(channel)
-            # if any(length.(map(x->occupancy[x],points[3])).!=1)
-            push!(wait_queue, points)
-            # else
-            #     errormonitor(Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims))
-            # end
-        end
-        if !isempty(wait_queue)
-            for i in length(wait_queue):-1:1
-                if all(map(y->y[1]==wait_queue[i][1], map(x->occupancy[x],wait_queue[i][3])))
-                    points = popat!(wait_queue, i)
+    ready_index = fill(false, n_points)
+    while !isempty(channel) || length(wait_queue) < n_points
+        points = take!(channel)
+        push!(wait_queue, points)
+    end
+
+    while inserted_points < n_points
+        for i in 1:n_points
+            if ready_index[i] == false
+                lock(lk)
+                isready = all(map(y->y[1]==wait_queue[i][1], map(x->occupancy[x],wait_queue[i][3])))
+                unlock(lk)
+                if isready
+                    points = wait_queue[i]
                     inserted_points += 1
                     errormonitor(Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims))
+                    ready_index[i] = true
                 end
             end
         end
     end
-    println("Done consuming")
-    println("Number of vertices: ", length(tree.vertices))
-    println("is empty: ", isempty(channel))
-    println("is empty: ", isempty(wait_queue))
 end
 
 
