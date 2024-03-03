@@ -29,9 +29,9 @@ end
 
 parallel_tree = deepcopy(tree)
 
-n_parallel = 32
+n_parallel = 256
 
-n_insert = 4096
+n_insert = 6553
 
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()

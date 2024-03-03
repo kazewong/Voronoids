@@ -93,15 +93,13 @@ end
 
 function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}, tree::DelaunayTree, lk::ReentrantLock, occupancy::Dict{Int, Vector{Int}}; n_dims::Int)
     lock(lk)
-        if !in(vertex,tree.vertices)
-            add_vertex!(tree, vertex, n_dims=n_dims)
-            for i in 1:length(neighbors)
-                popfirst!(occupancy[neighbors[i]])
-                # if isempty(occupancy[neighbors[i]])
-                #     delete!(occupancy, neighbors[i])
-                # end
-            end
+    add_vertex!(tree, vertex, n_dims=n_dims)
+    for i in 1:length(neighbors)
+        popfirst!(occupancy[neighbors[i]])
+        if isempty(occupancy[neighbors[i]])
+            delete!(occupancy, neighbors[i])
         end
+    end
     unlock(lk)
 end
 
@@ -115,6 +113,7 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
     end
 
     while inserted_points < n_points
+        println("Inserted points: ", inserted_points)
         for i in 1:n_points
             if ready_index[i] == false
                 lock(lk)
