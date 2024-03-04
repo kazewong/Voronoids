@@ -112,8 +112,9 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
         push!(wait_queue, points)
     end
 
+    timer = time()
     while inserted_points < n_points
-        println("Inserted points: ", inserted_points)
+        println("Point inserted: $inserted_points, Point per second: $(inserted_points/(time()-timer))")
         for i in 1:n_points
             if ready_index[i] == false
                 lock(lk)
@@ -122,7 +123,7 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
                 if isready
                     points = wait_queue[i]
                     inserted_points += 1
-                    errormonitor(Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims))
+                    Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims)
                     ready_index[i] = true
                 end
             end
