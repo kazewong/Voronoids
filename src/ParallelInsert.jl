@@ -59,16 +59,12 @@ function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float6
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
     Threads.@threads for i in 1:length(vertices)
-    # for i in 1:length(vertices)
         updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
     end
     for i in 1:length(vertices)
-        # lock(lk) do
-            insert_point!(tree, updates[i])
-            add_point!(tree.kdtree, vertices[i])
-        # end
+        insert_point!(tree, updates[i])
+        add_point!(tree.kdtree, vertices[i])
     end
-
     return updates
 end
 
@@ -83,18 +79,6 @@ function update_multiple_occupancy!(occupancy::Dict{Int, Vector{Int}}, neighbors
     end
 end
 
-function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}, tree::DelaunayTree, lk::ReentrantLock, occupancy::Dict{Int, Vector{Int}}; n_dims::Int)
-    lock(lk)
-    add_vertex!(tree, vertex, n_dims=n_dims)
-    for i in 1:length(neighbors)
-        popfirst!(occupancy[neighbors[i]])
-        if isempty(occupancy[neighbors[i]])
-            delete!(occupancy, neighbors[i])
-        end
-    end
-    unlock(lk)
-end
-
 function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     wait_queue = Vector{Tuple{Int, Vector{Float64}, Vector{Int}}}()
     inserted_points = 0
@@ -105,7 +89,6 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
     end
 
     timer = time()
-    counter = 0
     while inserted_points < n_points
         println("Point inserted: $inserted_points, Point per second: $(inserted_points/(time()-timer))")
 
@@ -127,32 +110,14 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
         unlock(lk)
 
         non_block_live_point = nonblock_index .* live_point
-        println("Number of non-blocked points: ", sum(non_block_live_point))
+        # println("Number of non-blocked points: ", sum(non_block_live_point))
         ids = getindex.(wait_queue[non_block_live_point], 1)
         vertices = getindex.(wait_queue[non_block_live_point], 2)
         neighbors = getindex.(wait_queue[non_block_live_point], 3)
-        # if counter == 1
-        #     # updates = Vector{TreeUpdate}(undef, length(vertices))
-        #     # n_vertex = length(tree.vertices)
-        #     # # Threads.@threads for i in 1:length(vertices)
-        #     # for i in 1:length(vertices)
-        #     #     updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
-        #     # end
-        #     # return updates
-        #     return add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
-        # else
-        #     add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
-        # end
         add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
         update_multiple_occupancy!(occupancy, neighbors, ids)
         inserted_points += sum(non_block_live_point)
         live_point[ids] .= false
-        counter += 1
-        # for point in wait_queue[non_block_live_point]
-        #     inserted_points += 1
-        #     Threads.@spawn consume_point!(point[1], point[2], point[3], tree, lk, occupancy, n_dims=n_dims)
-        #     live_point[ids] = false
-        # end
     end
 end
 
