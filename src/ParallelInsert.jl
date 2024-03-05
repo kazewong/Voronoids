@@ -55,13 +55,16 @@ end
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
-    Threads.@threads for i in 1:length(vertices)
+    # Threads.@threads for i in 1:length(vertices)
+    for i in 1:length(vertices)
         updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
+    # end
+
+    # for update in updates
+        insert_point!(tree, updates[i])
     end
+
     return updates
-    for update in updates
-        insert_point!(tree, update)
-    end
 end
 
 function update_multiple_occupancy!(occupancy::Dict{Int, Vector{Int}}, neighbors::Vector{Vector{Int}}, ids::Vector{Int})
@@ -97,6 +100,7 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
     end
 
     timer = time()
+    counter = 0
     while inserted_points < n_points
         println("Point inserted: $inserted_points, Point per second: $(inserted_points/(time()-timer))")
 
@@ -122,10 +126,15 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
         ids = map(x->x[1], wait_queue[non_block_live_point])
         vertices = map(x->x[2], wait_queue[non_block_live_point])
         neighbors = map(x->x[3], wait_queue[non_block_live_point])
-        add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        if counter == 2
+            return add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        else
+            add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        end
         update_multiple_occupancy!(occupancy, neighbors, ids)
         inserted_points += sum(non_block_live_point)
         live_point[ids] .= false
+        counter += 1
         # for point in wait_queue[non_block_live_point]
         #     inserted_points += 1
         #     Threads.@spawn consume_point!(point[1], point[2], point[3], tree, lk, occupancy, n_dims=n_dims)

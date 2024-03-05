@@ -44,3 +44,6 @@ println(length(parallel_tree.vertices))
 
 # channel, b, c = fetch(t)
 
+270086
+10524
+10537

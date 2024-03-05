@@ -192,6 +192,10 @@ function make_update(id::Int, point::Vector{Float64}, killed_sites:: Vector{Int}
     simplices_counter = 1
     for i in 1:length(killed_sites)
         simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, id, tree, n_dims=n_dims)
+        if 270086 in map(x->x[1], neighbors_id[i])
+            println("Vertex id: ", id)
+            println("Site: ", killed_sites)
+        end
         simplices_ids[i] = collect(simplices_counter:simplices_counter+length(simplices[i])-1)
         simplices_counter += length(simplices[i])
     end
