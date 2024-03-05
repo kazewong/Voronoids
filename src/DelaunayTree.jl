@@ -33,22 +33,22 @@ function insert_point!(tree::DelaunayTree, update::TreeUpdate)
     # Update neighbor relation with killed sites
     for i in 1:length(update.neighbors_id)
         neighbor_id, killed_id = update.neighbors_id[i]
-        tree.neighbors_relation[neighbor_id][tree.neighbors_relation[neighbor_id] .== killed_id] .= update.simplices_id[i]
+        tree.neighbors_relation[neighbor_id][tree.neighbors_relation[neighbor_id] .== killed_id] .= tree.max_simplices_id+update.simplices_id[i]
     end
 
     # Update neighbor relation between new sites
     for i in 1:length(update.simplices_id)
-        tree.neighbors_relation[update.simplices_id[i]] = [update.neighbors_id[i][1]]
+        tree.neighbors_relation[tree.max_simplices_id+update.simplices_id[i]] = [update.neighbors_id[i][1]]
     end
     for i in 1:length(update.new_neighbors_id)
-        push!(tree.neighbors_relation[update.new_neighbors_id[i][1]], update.new_neighbors_id[i][2])
+        push!(tree.neighbors_relation[tree.max_simplices_id+update.new_neighbors_id[i][1]], tree.max_simplices_id+update.new_neighbors_id[i][2])
     end
 
     # Update vertices_simplex
     push!(tree.vertices_simplex, Vector{Int}())
     for i in 1:length(update.simplices)
         for j in update.simplices[i]
-            push!(tree.vertices_simplex[j], update.simplices_id[i])
+            push!(tree.vertices_simplex[j], tree.max_simplices_id+update.simplices_id[i])
         end
     end
     for i in 1:length(killed_sites_ids)
@@ -59,9 +59,9 @@ function insert_point!(tree::DelaunayTree, update::TreeUpdate)
 
     # Update simplices
     for i in 1:length(update.simplices_id)
-        tree.simplices[update.simplices_id[i]] = update.simplices[i]
-        tree.centers[update.simplices_id[i]] = update.centers[i]
-        tree.radii[update.simplices_id[i]] = update.radii[i]
+        tree.simplices[tree.max_simplices_id+update.simplices_id[i]] = update.simplices[i]
+        tree.centers[tree.max_simplices_id+update.simplices_id[i]] = update.centers[i]
+        tree.radii[tree.max_simplices_id+update.simplices_id[i]] = update.radii[i]
     end
 
     # Remove killed sites

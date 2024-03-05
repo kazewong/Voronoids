@@ -183,7 +183,7 @@ function make_update(point::Vector{Float64}, killed_sites:: Vector{Int}, tree::D
     centers = Vector{Vector{Vector{Float64}}}(undef, length(killed_sites))
     radii = Vector{Vector{Float64}}(undef, length(killed_sites))
     neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(killed_sites))
-    simplices_counter = tree.max_simplices_id+1
+    simplices_counter = 1
     for i in 1:length(killed_sites)
         simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, tree, n_dims=n_dims)
         simplices_ids[i] = collect(simplices_counter:simplices_counter+length(simplices[i])-1)
