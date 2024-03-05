@@ -37,32 +37,6 @@ function add_to_occupancy!(occupancy::Dict{Int, Vector{Int}}, sites::Vector{Vect
     end
 end
 
-function find_conflict_group(result::Vector{Int}, neighbors::Vector{Vector{Int}}, vertex_id::Int, occupancy::Dict{Int, Vector{Int}})::Vector{Int}
-    push!(result, vertex_id)
-    conflict_list = unique(mapreduce(x->occupancy[x], vcat, neighbors[vertex_id % (length(neighbors)+1)]))
-    for conflict in conflict_list
-        if conflict ∉ result
-            result = find_conflict_group(result, neighbors, conflict, occupancy)
-        end
-    end
-    return result
-end
-
-function group_points(site_list::Vector{Vector{Int}}, neighbors::Vector{Vector{Int}}, occupancy::Dict{Int, Vector{Int}})::Vector{Vector{Int}}
-    #=
-    This function groups the vertices which occupies the same simplices together.
-    =#
-    output = Vector{Vector{Int}}()
-    checked = Vector{Int}()
-    while length(checked) < length(site_list)
-        vertex_id = findfirst(x->x ∉ checked, 1:length(site_list))
-        conflict_group = find_conflict_group(Vector{Int}(), neighbors, vertex_id, occupancy)
-        push!(output, conflict_group)
-        push!(checked, conflict_group...)
-    end
-    return output
-end
-
 function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
     partition = Iterators.partition(1:length(points), batch_size)
     println("Size of partition: ", length(points))
@@ -78,17 +52,26 @@ function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vect
     println("Done queuing")
 end
 
-function queue_point!(channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}}, id::Int, vertex::Vector{Float64}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree, lk:: ReentrantLock)
-    neighbor = unique(map(x->tree.neighbors_relation[x], locate(Vector{Int}(), vertex, tree)))
-    lock(lk)
-        for neighbor in neighbors[i]
-            if !haskey(occupancy, neighbor)
-                occupancy[neighbor] = Vector{Int}()
+function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
+    updates = Vector{TreeUpdate}(undef, length(vertices))
+    Threads.@threads for i in 1:length(vertices)
+        updates[i] = make_update(vertices[i], tree, n_dims=n_dims)
+    end
+    return updates
+    # for update in updates
+    #     insert_point!(tree, update)
+    # end
+end
+
+function update_multiple_occupancy!(occupancy::Dict{Int, Vector{Int}}, neighbors::Vector{Vector{Int}}, ids::Vector{Int})
+    Threads.@threads for neighbor in neighbors
+        for i in 1:length(neighbor)
+            popfirst!(occupancy[neighbor[i]])
+            if isempty(occupancy[neighbor[i]])
+                delete!(occupancy, neighbor[i])
             end
-            occupancy[neighbor] = push!(occupancy[neighbor], ids[i])
         end
-    unlock(lk)
-    put!(channel, (id, vertex, neighbor))
+    end
 end
 
 function consume_point!(id::Int, vertex::Vector{Float64}, neighbors::Vector{Int}, tree::DelaunayTree, lk::ReentrantLock, occupancy::Dict{Int, Vector{Int}}; n_dims::Int)
@@ -106,7 +89,7 @@ end
 function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     wait_queue = Vector{Tuple{Int, Vector{Float64}, Vector{Int}}}()
     inserted_points = 0
-    ready_index = fill(false, n_points)
+    live_point = fill(true, n_points)
     while !isempty(channel) || length(wait_queue) < n_points
         points = take!(channel)
         push!(wait_queue, points)
@@ -115,19 +98,38 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
     timer = time()
     while inserted_points < n_points
         println("Point inserted: $inserted_points, Point per second: $(inserted_points/(time()-timer))")
-        for i in 1:n_points
-            if ready_index[i] == false
-                lock(lk)
-                isready = all(map(y->y[1]==wait_queue[i][1], map(x->occupancy[x],wait_queue[i][3])))
-                unlock(lk)
-                if isready
-                    points = wait_queue[i]
-                    inserted_points += 1
-                    Threads.@spawn consume_point!(points[1], points[2], points[3], tree, lk, occupancy, n_dims=n_dims)
-                    ready_index[i] = true
+
+        lock(lk)
+        nonblock_index = fill(true, n_points)
+        Threads.@threads for (id, vertex, neighbors) in wait_queue[live_point]
+            if nonblock_index[id] == true
+                unique_first_elements = unique(map(x->occupancy[x][1], neighbors))
+                # if length(unique_first_elements) != 1
+                #     for element in unique_first_elements
+                #         nonblock_index[element] = false
+                #     end
+                # end
+                if unique_first_elements[1] != id || length(unique_first_elements) != 1
+                    nonblock_index[id] = false
                 end
             end
         end
+        unlock(lk)
+
+        non_block_live_point = nonblock_index .* live_point
+        println("Number of non-blocked points: ", sum(non_block_live_point))
+        ids = map(x->x[1], wait_queue[non_block_live_point])
+        vertices = map(x->x[2], wait_queue[non_block_live_point])
+        neighbors = map(x->x[3], wait_queue[non_block_live_point])
+        return add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        update_multiple_occupancy!(occupancy, neighbors, ids)
+        inserted_points += sum(non_block_live_point)
+        live_point[ids] .= false
+        # for point in wait_queue[non_block_live_point]
+        #     inserted_points += 1
+        #     Threads.@spawn consume_point!(point[1], point[2], point[3], tree, lk, occupancy, n_dims=n_dims)
+        #     live_point[ids] = false
+        # end
     end
 end
 
@@ -142,4 +144,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, find_conflict_group, group_points, queue_multiple_points!, consume_multiple_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, consume_multiple_points!, parallel_insert!
