@@ -25,7 +25,6 @@ struct TreeUpdate
 end
 
 function insert_point!(tree::DelaunayTree, update::TreeUpdate)
-    new_vertex_id = length(tree.vertices) + 1
     killed_sites_ids = sort(update.killed_sites)
     push!(tree.vertices, update.vertices)
     add_point!(tree.kdtree, update.vertices)

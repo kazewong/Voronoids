@@ -137,7 +137,7 @@ function locate(output::Vector{Int}, simplex_id::Vector{Int}, vertex::Vector{Flo
     return unique(output)
 end
 
-function get_new_simplices(site::Int, vertex::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)
+function get_new_simplices(site::Int, vertex::Vector{Float64}, vertex_id::Int, tree::DelaunayTree; n_dims::Int=3)
     simplices = Vector{Vector{Int}}()
     centers = Vector{Vector{Float64}}()
     radii = Vector{Float64}()
@@ -146,7 +146,7 @@ function get_new_simplices(site::Int, vertex::Vector{Float64}, tree::DelaunayTre
         if !in_sphere(neighbor_id, vertex, tree)
             facet = common_facet(tree.simplices[site], tree.simplices[neighbor_id], n_dims=n_dims)
             if length(facet) == n_dims
-                push!(simplices, [length(tree.vertices) + 1, facet...])
+                push!(simplices, [vertex_id, facet...])
                 center, radius = circumsphere([vertex, tree.vertices[facet]...], n_dims=n_dims)
                 push!(centers, center)
                 push!(radii, radius)
@@ -156,6 +156,12 @@ function get_new_simplices(site::Int, vertex::Vector{Float64}, tree::DelaunayTre
     end
     return (simplices, centers, radii, neighbors_id)
 end
+
+function get_new_simplices(site::Int, vertex::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)
+    vertex_id = length(tree.vertices) + 1
+    return get_new_simplices(site, vertex, vertex_id, tree, n_dims=n_dims)
+end
+
 
 function make_new_neighbors(simplices::Vector{Vector{Int}}, simplices_id:: Vector{Int}; n_dims::Int=3)::Vector{Tuple{Int, Int}}
     length_simplices = length(simplices)
@@ -173,7 +179,7 @@ function make_new_neighbors(simplices::Vector{Vector{Int}}, simplices_id:: Vecto
 end
 
 
-function make_update(point::Vector{Float64}, killed_sites:: Vector{Int}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
+function make_update(id::Int, point::Vector{Float64}, killed_sites:: Vector{Int}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
     if length(killed_sites) == 0
         println("Point: ", point)
         throw(ArgumentError("The point is already in the Delaunay triangulation"))
@@ -185,7 +191,7 @@ function make_update(point::Vector{Float64}, killed_sites:: Vector{Int}, tree::D
     neighbors_id = Vector{Vector{Tuple{Int, Int}}}(undef, length(killed_sites))
     simplices_counter = 1
     for i in 1:length(killed_sites)
-        simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, tree, n_dims=n_dims)
+        simplices[i], centers[i], radii[i], neighbors_id[i] = get_new_simplices(killed_sites[i], point, id, tree, n_dims=n_dims)
         simplices_ids[i] = collect(simplices_counter:simplices_counter+length(simplices[i])-1)
         simplices_counter += length(simplices[i])
     end
@@ -198,9 +204,15 @@ function make_update(point::Vector{Float64}, killed_sites:: Vector{Int}, tree::D
     return TreeUpdate(point, killed_sites, simplices, simplices_ids, centers, radii, neighbors_id, new_neighbors_id)
 end
 
+function make_update(id::Int, point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
+    killed_sites = locate(Vector{Int}(), point, tree)
+    return make_update(id, point, killed_sites, tree, n_dims=n_dims)
+end
+
 function make_update(point::Vector{Float64}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
     killed_sites = locate(Vector{Int}(), point, tree)
-    return make_update(point, killed_sites, tree, n_dims=n_dims)
+    id = length(tree.vertices) + 1
+    return make_update(id, point, killed_sites, tree, n_dims=n_dims)
 end
 
 function add_vertex!(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)

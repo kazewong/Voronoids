@@ -53,13 +53,14 @@ function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vect
 end
 
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
-    killed_sites = parallel_locate(vertices, tree)
     updates = Vector{TreeUpdate}(undef, length(vertices))
-    for i in 1:length(vertices)
-        updates[i] = make_update(vertices[i], killed_sites[i], tree, n_dims=n_dims)
-    # end
-    # for update in updates
-        insert_point!(tree, updates[i])
+    n_vertex = length(tree.vertices)
+    Threads.@threads for i in 1:length(vertices)
+        updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
+    end
+    return updates
+    for update in updates
+        insert_point!(tree, update)
     end
 end
 
