@@ -11,7 +11,7 @@ const tmr = TimerOutput()
 
 Random.seed!(1234)
 
-n = 10000
+n = 1000
 n_dims = 3
 
 test_points = [rand(n_dims) for i in 1:n]

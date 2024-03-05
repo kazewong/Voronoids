@@ -72,7 +72,7 @@ function insert_point!(tree::DelaunayTree, update::TreeUpdate)
         delete!(tree.neighbors_relation, killed_sites_id)
     end
 
-    tree.max_simplices_id = maximum(update.simplices_id)
+    tree.max_simplices_id += maximum(update.simplices_id)
 end
 
 function initialize_tree_3d(positions::Vector{Vector{Float64}})::DelaunayTree
