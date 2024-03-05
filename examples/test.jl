@@ -43,7 +43,3 @@ println(length(parallel_tree.vertices))
 # t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)
 
 # channel, b, c = fetch(t)
-
-270086
-10524
-10537

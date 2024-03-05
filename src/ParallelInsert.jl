@@ -59,9 +59,11 @@ function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float6
     for i in 1:length(vertices)
         updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
     # end
-
-    # for update in updates
-        insert_point!(tree, updates[i])
+    # for i in 1:length(vertices)
+        # lock(lk) do
+            insert_point!(tree, updates[i])
+            add_point!(tree.kdtree, vertices[i])
+        # end
     end
 
     return updates
@@ -126,18 +128,19 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
         ids = map(x->x[1], wait_queue[non_block_live_point])
         vertices = map(x->x[2], wait_queue[non_block_live_point])
         neighbors = map(x->x[3], wait_queue[non_block_live_point])
-        if counter == 2
-            # updates = Vector{TreeUpdate}(undef, length(vertices))
-            # n_vertex = length(tree.vertices)
-            # # Threads.@threads for i in 1:length(vertices)
-            # for i in 1:length(vertices)
-            #     updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
-            # end
-            # return updates
-            return 1#add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
-        else
-            add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
-        end
+        # if counter == 1
+        #     # updates = Vector{TreeUpdate}(undef, length(vertices))
+        #     # n_vertex = length(tree.vertices)
+        #     # # Threads.@threads for i in 1:length(vertices)
+        #     # for i in 1:length(vertices)
+        #     #     updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
+        #     # end
+        #     # return updates
+        #     return add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        # else
+        #     add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        # end
+        add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
         update_multiple_occupancy!(occupancy, neighbors, ids)
         inserted_points += sum(non_block_live_point)
         live_point[ids] .= false

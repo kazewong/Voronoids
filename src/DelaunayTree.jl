@@ -27,7 +27,6 @@ end
 function insert_point!(tree::DelaunayTree, update::TreeUpdate)
     killed_sites_ids = sort(update.killed_sites)
     push!(tree.vertices, update.vertices)
-    add_point!(tree.kdtree, update.vertices)
 
     # Update neighbor relation with killed sites
     for i in 1:length(update.neighbors_id)
