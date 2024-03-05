@@ -42,6 +42,9 @@ function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vect
     println("Size of partition: ", length(points))
     for chunk in partition
         site_list, neighbor_list = identify_conflicts(points[chunk], tree)
+        for i in 1:length(neighbor_list)
+            neighbor_list[i] = unique(mapreduce(x->tree.neighbors_relation[x], vcat, neighbor_list[i]))
+        end
         lock(lk)
         add_to_occupancy!(occupancy, site_list, neighbor_list, collect(chunk))
         unlock(lk)
@@ -55,11 +58,11 @@ end
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
-    # Threads.@threads for i in 1:length(vertices)
-    for i in 1:length(vertices)
-        updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
-    # end
+    Threads.@threads for i in 1:length(vertices)
     # for i in 1:length(vertices)
+        updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
+    end
+    for i in 1:length(vertices)
         # lock(lk) do
             insert_point!(tree, updates[i])
             add_point!(tree.kdtree, vertices[i])
@@ -125,9 +128,9 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
 
         non_block_live_point = nonblock_index .* live_point
         println("Number of non-blocked points: ", sum(non_block_live_point))
-        ids = map(x->x[1], wait_queue[non_block_live_point])
-        vertices = map(x->x[2], wait_queue[non_block_live_point])
-        neighbors = map(x->x[3], wait_queue[non_block_live_point])
+        ids = getindex.(wait_queue[non_block_live_point], 1)
+        vertices = getindex.(wait_queue[non_block_live_point], 2)
+        neighbors = getindex.(wait_queue[non_block_live_point], 3)
         # if counter == 1
         #     # updates = Vector{TreeUpdate}(undef, length(vertices))
         #     # n_vertex = length(tree.vertices)
