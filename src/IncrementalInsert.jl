@@ -143,6 +143,10 @@ function get_new_simplices(site::Int, vertex::Vector{Float64}, vertex_id::Int, t
     radii = Vector{Float64}()
     neighbors_id = Vector{Tuple{Int, Int}}()
     for neighbor_id in tree.neighbors_relation[site]
+        if 270086 in tree.neighbors_relation[site]
+            println("Neighbor id: ", neighbor_id)
+            println("Site: ", site)
+        end
         if !in_sphere(neighbor_id, vertex, tree)
             facet = common_facet(tree.simplices[site], tree.simplices[neighbor_id], n_dims=n_dims)
             if length(facet) == n_dims
