@@ -11,7 +11,7 @@ const tmr = TimerOutput()
 
 Random.seed!(1234)
 
-n = 1000
+n = 10000
 n_dims = 3
 
 test_points = [rand(n_dims) for i in 1:n]
@@ -31,7 +31,7 @@ parallel_tree = deepcopy(tree)
 
 n_parallel = 256
 
-n_insert = 65536
+n_insert = 6553
 
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()
