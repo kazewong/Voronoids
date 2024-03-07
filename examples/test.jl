@@ -42,10 +42,10 @@ queue = channel_to_queue(n_insert, channel)
 
 ids = map(x->x[1], queue)
 neighbors = map(x->x[3], queue)
-placement = find_placement(ids, neighbors, occupancy)
+placement = fill(0, n_insert)
+placement = find_placement!(placement, 10000, neighbors, occupancy)
 
-
-t2 = consume_multiple_points!(queue, parallel_tree, occupancy,lk, n_dims)
+t2 = consume_multiple_points!(queue, parallel_tree, occupancy, lk, n_dims)
 println(length(parallel_tree.vertices))
 # t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)
 

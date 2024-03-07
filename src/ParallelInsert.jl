@@ -63,12 +63,28 @@ function channel_to_queue(n_points::Int, channel::Channel{Tuple{Int, Vector{Floa
     return queue
 end
 
-function find_placement(id::Int,neighbors::Vector{Int},  occupancy::Dict{Int, Vector{Int}})::Int
-    return findfirst(x->x==id, unique(reduce(vcat, map(x->occupancy[x], neighbors))))
+function find_placement!(placement::Vector{Int}, start_id::Int, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})
+    order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors[start_id]))))
+    last_id = findfirst(x->x==start_id, order_id)
+    # println("Last id: ", last_id)
+    if last_id == 1
+        placement[start_id] = 1
+    else
+        for i in last_id-1:-1:1
+            placement[start_id] = max(placement[start_id], find_placement!(placement, order_id[i], neighbors, occupancy) + 1)
+        end
+    end
+    return placement[start_id]
 end
 
-function find_placement(id::Vector{Int}, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})::Vector{Int}
-    return map(x->find_placement(x[1], x[2], occupancy), zip(id, neighbors))
+function find_placement(neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})::Vector{Int}
+    placement = fill(0, length(neighbors))
+    start_id = length(neighbors)
+    while !isnothing(findfirst(x->x==0, placement))
+        start_id = findlast(x->x==0, placement)
+        find_placement!(placement, start_id, neighbors, occupancy)
+    end
+    return placement
 end
 
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
@@ -97,23 +113,22 @@ end
 
 function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     timer = time()
-    placement = find_placement(getindex.(wait_queue, 1), getindex.(wait_queue, 3), occupancy)
+    placement = find_placement(getindex.(wait_queue, 3), occupancy)
     all_ids = getindex.(wait_queue, 1)
     all_vertices = getindex.(wait_queue, 2)
     all_neighbors = getindex.(wait_queue, 3)
 
     println(maximum(placement))
     for i in 1:maximum(placement)
+        timer = time()
         index = findall(x->x==i, placement)
-        println("Point inserted: $(length(index)), Point per second: $((length(index))/(time()-timer))")
-
         # println("Number of non-blocked points: ", sum(non_block_live_point))
         ids = all_ids[index]
         vertices = all_vertices[index]
         neighbors = all_neighbors[index]
-        # add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
         update_multiple_occupancy!(occupancy, neighbors, ids)
-        timer = time()
+        println("Point inserted: $(length(index)), Point per second: $((length(index))/(time()-timer))")
     end
 end
 
@@ -128,4 +143,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, channel_to_queue, find_placement, consume_multiple_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, channel_to_queue, find_placement!, find_placement, consume_multiple_points!, parallel_insert!
