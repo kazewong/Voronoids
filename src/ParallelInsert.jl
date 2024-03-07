@@ -63,6 +63,14 @@ function channel_to_queue(n_points::Int, channel::Channel{Tuple{Int, Vector{Floa
     return queue
 end
 
+function find_placement(id::Int,neighbors::Vector{Int},  occupancy::Dict{Int, Vector{Int}})::Int
+    return findfirst(x->x==id, unique(reduce(vcat, map(x->occupancy[x], neighbors))))
+end
+
+function find_placement(id::Vector{Int}, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})::Vector{Int}
+    return map(x->find_placement(x[1], x[2], occupancy), zip(id, neighbors))
+end
+
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
@@ -87,45 +95,21 @@ function update_multiple_occupancy!(occupancy::Dict{Int, Vector{Int}}, neighbors
     end
 end
 
-function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
-    wait_queue = Vector{Tuple{Int, Vector{Float64}, Vector{Int}}}()
-    inserted_points = 0
-    live_point = fill(true, n_points)
-    while !isempty(channel) || length(wait_queue) < n_points
-        points = take!(channel)
-        push!(wait_queue, points)
-    end
-
+function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}}, n_dims::Int)
     timer = time()
-    while inserted_points < n_points
-        println("Point inserted: $inserted_points, Point per second: $(inserted_points/(time()-timer))")
+    placement = find_placement(getindex.(wait_queue, 1), getindex.(wait_queue, 3), occupancy)
 
-        lock(lk)
-        nonblock_index = fill(true, n_points)
-        Threads.@threads for (id, vertex, neighbors) in wait_queue[live_point]
-            if nonblock_index[id] == true
-                unique_first_elements = unique(map(x->occupancy[x][1], neighbors))
-                # if length(unique_first_elements) != 1
-                #     for element in unique_first_elements
-                #         nonblock_index[element] = false
-                #     end
-                # end
-                if unique_first_elements[1] != id || length(unique_first_elements) != 1
-                    nonblock_index[id] = false
-                end
-            end
-        end
-        unlock(lk)
+    println(maximum(placement))
+    for i in 1:maximum(placement)
+        index = findall(x->x==i, placement)
+        println("Point inserted: $(length(index)), Point per second: $((length(index))/(time()-timer))")
 
-        non_block_live_point = nonblock_index .* live_point
         # println("Number of non-blocked points: ", sum(non_block_live_point))
-        ids = getindex.(wait_queue[non_block_live_point], 1)
-        vertices = getindex.(wait_queue[non_block_live_point], 2)
-        neighbors = getindex.(wait_queue[non_block_live_point], 3)
+        ids = getindex.(wait_queue[index], 1)
+        vertices = getindex.(wait_queue[index], 2)
+        neighbors = getindex.(wait_queue[index], 3)
         # add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
         update_multiple_occupancy!(occupancy, neighbors, ids)
-        inserted_points += sum(non_block_live_point)
-        live_point[ids] .= false
     end
 end
 
@@ -140,4 +124,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, channel_to_queue, consume_multiple_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, channel_to_queue, find_placement, consume_multiple_points!, parallel_insert!

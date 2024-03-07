@@ -40,7 +40,12 @@ t1 = Threads.@spawn queue_multiple_points!(channel, test_points2[1:n_insert], oc
 
 queue = channel_to_queue(n_insert, channel)
 
-t2 = consume_multiple_points!(n_insert, channel, parallel_tree, occupancy, lk, n_dims)
+ids = map(x->x[1], queue)
+neighbors = map(x->x[3], queue)
+placement = find_placement(ids, neighbors, occupancy)
+
+
+t2 = consume_multiple_points!(queue, parallel_tree, occupancy, n_dims)
 println(length(parallel_tree.vertices))
 # t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)
 
