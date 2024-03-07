@@ -116,19 +116,16 @@ end
 function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     timer = time()
     placement = find_placement(getindex.(wait_queue, 3), occupancy)
-    all_ids = getindex.(wait_queue, 1)
     all_vertices = getindex.(wait_queue, 2)
-    all_neighbors = getindex.(wait_queue, 3)
 
-    println(maximum(placement))
     for i in 1:maximum(placement)
-        timer = time()
         index = findall(x->x==i, placement)
         # println("Number of non-blocked points: ", sum(non_block_live_point))
         vertices = all_vertices[index]
         add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
-        println("Point inserted: $(length(index)), Point per second: $((length(index))/(time()-timer))")
     end
+    println("Point inserted: $(length(wait_queue)), Point per second: $((length(wait_queue))/(time()-timer))")
+
 end
 
 
