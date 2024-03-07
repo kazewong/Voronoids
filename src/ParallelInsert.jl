@@ -95,7 +95,7 @@ function update_multiple_occupancy!(occupancy::Dict{Int, Vector{Int}}, neighbors
     end
 end
 
-function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}}, n_dims::Int)
+function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     timer = time()
     placement = find_placement(getindex.(wait_queue, 1), getindex.(wait_queue, 3), occupancy)
     all_ids = getindex.(wait_queue, 1)
@@ -113,6 +113,7 @@ function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},
         neighbors = all_neighbors[index]
         # add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
         update_multiple_occupancy!(occupancy, neighbors, ids)
+        timer = time()
     end
 end
 

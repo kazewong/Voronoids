@@ -45,7 +45,7 @@ neighbors = map(x->x[3], queue)
 placement = find_placement(ids, neighbors, occupancy)
 
 
-t2 = consume_multiple_points!(queue, parallel_tree, occupancy, n_dims)
+t2 = consume_multiple_points!(queue, parallel_tree, occupancy,lk, n_dims)
 println(length(parallel_tree.vertices))
 # t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)
 
