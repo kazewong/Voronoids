@@ -55,6 +55,14 @@ function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vect
     println("Done queuing")
 end
 
+function channel_to_queue(n_points::Int, channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}})::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}
+    queue = Vector{Tuple{Int, Vector{Float64},Vector{Int}}}()
+    while !isempty(channel) || length(queue) < n_points
+        push!(queue, take!(channel))
+    end
+    return queue
+end
+
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
@@ -114,7 +122,7 @@ function consume_multiple_points!(n_points::Int, channel::Channel{Tuple{Int, Vec
         ids = getindex.(wait_queue[non_block_live_point], 1)
         vertices = getindex.(wait_queue[non_block_live_point], 2)
         neighbors = getindex.(wait_queue[non_block_live_point], 3)
-        add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        # add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
         update_multiple_occupancy!(occupancy, neighbors, ids)
         inserted_points += sum(non_block_live_point)
         live_point[ids] .= false
@@ -132,4 +140,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
     return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, consume_multiple_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, channel_to_queue, consume_multiple_points!, parallel_insert!

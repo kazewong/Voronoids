@@ -31,12 +31,14 @@ parallel_tree = deepcopy(tree)
 
 n_parallel = 256
 
-n_insert = 65536
+n_insert = 10000
 
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()
 channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(n_parallel)
 t1 = Threads.@spawn queue_multiple_points!(channel, test_points2[1:n_insert], occupancy, parallel_tree, lk, batch_size=n_parallel)
+
+queue = channel_to_queue(n_insert, channel)
 
 t2 = consume_multiple_points!(n_insert, channel, parallel_tree, occupancy, lk, n_dims)
 println(length(parallel_tree.vertices))
