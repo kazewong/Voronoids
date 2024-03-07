@@ -125,11 +125,8 @@ function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},
         timer = time()
         index = findall(x->x==i, placement)
         # println("Number of non-blocked points: ", sum(non_block_live_point))
-        ids = all_ids[index]
         vertices = all_vertices[index]
-        neighbors = all_neighbors[index]
         add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
-        update_multiple_occupancy!(occupancy, neighbors, ids)
         println("Point inserted: $(length(index)), Point per second: $((length(index))/(time()-timer))")
     end
 end
