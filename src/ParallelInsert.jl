@@ -64,14 +64,16 @@ function channel_to_queue(n_points::Int, channel::Channel{Tuple{Int, Vector{Floa
 end
 
 function find_placement!(placement::Vector{Int}, start_id::Int, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})
-    order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors[start_id]))))
-    last_id = findfirst(x->x==start_id, order_id)
-    # println("Last id: ", last_id)
-    if last_id == 1
-        placement[start_id] = 1
-    else
-        for i in last_id-1:-1:1
-            placement[start_id] = max(placement[start_id], find_placement!(placement, order_id[i], neighbors, occupancy) + 1)
+    if placement[start_id] ==0
+        order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors[start_id]))))
+        last_id = findfirst(x->x==start_id, order_id)
+        # println("Last id: ", last_id)
+        if last_id == 1
+            placement[start_id] = 1
+        else
+            for i in last_id-1:-1:1
+                placement[start_id] = max(placement[start_id], find_placement!(placement, order_id[i], neighbors, occupancy) + 1)
+            end
         end
     end
     return placement[start_id]
