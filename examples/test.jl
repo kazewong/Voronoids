@@ -29,22 +29,11 @@ end
 
 parallel_tree = deepcopy(tree)
 
-n_parallel = 256
+n_parallel = 10000
 
 n_insert = 100000
 
-occupancy = Dict{Int, Vector{Int}}()
-lk = ReentrantLock()
-channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(n_parallel)
-t1 = Threads.@spawn queue_multiple_points!(channel, test_points2[1:n_insert], occupancy, parallel_tree, lk, batch_size=n_parallel)
+# queue = make_queue!(test_points2[1:n_insert], occupancy, parallel_tree, lk, batch_size=n_parallel)
+# tconsume_multiple_points!(queue, parallel_tree, occupancy, lk, n_dims)
 
-queue = channel_to_queue(n_insert, channel)
-
-ids = map(x->x[1], queue)
-neighbors = map(x->x[3], queue)
-# placement = fill(0, n_insert)
-# find_placement!(placement, 10000, neighbors, occupancy)
-placement = find_placement(neighbors, occupancy)
-
-t2 = consume_multiple_points!(queue, parallel_tree, occupancy, lk, n_dims)
-
+parallel_insert!(test_points2[1:n_insert], parallel_tree, n_dims=n_dims, batch_size=n_parallel)

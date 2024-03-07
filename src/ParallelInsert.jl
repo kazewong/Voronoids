@@ -37,7 +37,8 @@ function add_to_occupancy!(occupancy::Dict{Int, Vector{Int}}, sites::Vector{Vect
     end
 end
 
-function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}}, points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree, lk:: ReentrantLock; batch_size::Int=256)
+function make_queue!(points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vector{Int}},tree::DelaunayTree; batch_size::Int=256)::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}
+    queue = Vector{Tuple{Int, Vector{Float64},Vector{Int}}}(undef, length(points))
     partition = Iterators.partition(1:length(points), batch_size)
     println("Size of partition: ", length(points))
     for chunk in partition
@@ -45,21 +46,12 @@ function queue_multiple_points!(channel::Channel{Tuple{Int, Vector{Float64},Vect
         for i in 1:length(neighbor_list)
             neighbor_list[i] = unique(mapreduce(x->tree.neighbors_relation[x], vcat, neighbor_list[i]))
         end
-        lock(lk)
         add_to_occupancy!(occupancy, site_list, neighbor_list, collect(chunk))
-        unlock(lk)
         for i in 1:length(chunk)
-            put!(channel, (chunk[i], points[chunk[i]], neighbor_list[i]))
+            queue[chunk[i]] = (chunk[i], points[chunk[i]], neighbor_list[i])
         end
     end
     println("Done queuing")
-end
-
-function channel_to_queue(n_points::Int, channel::Channel{Tuple{Int, Vector{Float64},Vector{Int}}})::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}
-    queue = Vector{Tuple{Int, Vector{Float64},Vector{Int}}}()
-    while !isempty(channel) || length(queue) < n_points
-        push!(queue, take!(channel))
-    end
     return queue
 end
 
@@ -89,7 +81,7 @@ function find_placement(neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Ve
     return placement
 end
 
-function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}, lk::ReentrantLock; n_dims::Int)
+function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
     Threads.@threads for i in 1:length(vertices)
@@ -102,7 +94,7 @@ function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float6
     return updates
 end
 
-function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
+function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},n_dims::Int)
     timer = time()
     placement = find_placement(getindex.(wait_queue, 3), occupancy)
     all_vertices = getindex.(wait_queue, 2)
@@ -113,7 +105,7 @@ function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},
         index = findall(x->x==i, placement)
         # println("Number of non-blocked points: ", sum(non_block_live_point))
         vertices = all_vertices[index]
-        add_multiple_vertex!(tree, vertices, lk, n_dims=n_dims)
+        add_multiple_vertex!(tree, vertices, n_dims=n_dims)
     end
     println("Point inserted: $(length(wait_queue)), Point per second: $((length(wait_queue))/(time()-timer))")
 
@@ -121,13 +113,12 @@ end
 
 
 function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
-    update_channel = Channel{Tuple{Int, Vector{Float64}, Vector{Int}}}(batch_size+1)
-    lk = ReentrantLock()
     occupancy = Dict{Int, Vector{Int}}()
+    for chunk in Iterators.partition(1:length(points), batch_size)
+        queue = make_queue!(points[chunk], occupancy, tree)
+        consume_multiple_points!(queue, tree, occupancy, n_dims)
+    end
 
-    queue_multiple_points!(update_channel, points, occupancy, tree, lk)
-    consume_points!(update_channel, tree, t1, occupancy, lk, n_dims)
-    return update_channel, t1, t2
 end
 
-export parallel_locate, batch_locate, identify_conflicts, queue_multiple_points!, channel_to_queue, find_placement!, find_placement, consume_multiple_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, make_queue!, find_placement!, find_placement, consume_multiple_points!, parallel_insert!
