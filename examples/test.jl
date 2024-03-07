@@ -31,7 +31,7 @@ parallel_tree = deepcopy(tree)
 
 n_parallel = 256
 
-n_insert = 10000
+n_insert = 100000
 
 occupancy = Dict{Int, Vector{Int}}()
 lk = ReentrantLock()
@@ -44,10 +44,7 @@ ids = map(x->x[1], queue)
 neighbors = map(x->x[3], queue)
 # placement = fill(0, n_insert)
 # find_placement!(placement, 10000, neighbors, occupancy)
-# placement = find_placement(neighbors, occupancy)
+placement = find_placement(neighbors, occupancy)
 
 t2 = consume_multiple_points!(queue, parallel_tree, occupancy, lk, n_dims)
-println(length(parallel_tree.vertices))
-# t = @async parallel_insert!(test_points2[1:n_parallel], parallel_tree, n_dims=n_dims)
 
-# channel, b, c = fetch(t)

@@ -102,22 +102,13 @@ function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float6
     return updates
 end
 
-function update_multiple_occupancy!(occupancy::Dict{Int, Vector{Int}}, neighbors::Vector{Vector{Int}}, ids::Vector{Int})
-    Threads.@threads for neighbor in neighbors
-        for i in 1:length(neighbor)
-            popfirst!(occupancy[neighbor[i]])
-            if isempty(occupancy[neighbor[i]])
-                delete!(occupancy, neighbor[i])
-            end
-        end
-    end
-end
-
 function consume_multiple_points!(wait_queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, tree::DelaunayTree, occupancy::Dict{Int, Vector{Int}},lk::ReentrantLock, n_dims::Int)
     timer = time()
     placement = find_placement(getindex.(wait_queue, 3), occupancy)
     all_vertices = getindex.(wait_queue, 2)
+    println("Placement found: $(time()-timer)")
 
+    timer = time()
     for i in 1:maximum(placement)
         index = findall(x->x==i, placement)
         # println("Number of non-blocked points: ", sum(non_block_live_point))
