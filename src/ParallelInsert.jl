@@ -51,7 +51,7 @@ function make_queue!(points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vecto
             queue[chunk[i]] = (chunk[i], points[chunk[i]], neighbor_list[i])
         end
     end
-    println("Done queuing")
+    println("Done queuing.")
     return queue
 end
 
@@ -78,14 +78,28 @@ function find_placement(neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Ve
         start_id = findlast(x->x==0, placement)
         find_placement!(placement, start_id, neighbors, occupancy)
     end
+    println("Unique placement: ", maximum(placement))
     return placement
 end
+
+function batch_update(ids::UnitRange{Int}, vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int)
+    output = Vector{TreeUpdate}(undef, length(ids))
+    for i in 1:length(ids)
+        output[i] = make_update(ids[i], vertices[i], tree, n_dims=n_dims)
+    end
+    return output
+end
+
 
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
+    # chunk = collect(Iterators.partition(1:length(vertices), max(length(vertices) ÷ Threads.nthreads(),1)))
+    # Threads.@threads for i in chunk
+    #     updates[i] = batch_update(i .+ n_vertex, vertices[i], tree, n_dims=n_dims)
+    # end
     Threads.@threads for i in 1:length(vertices)
-        updates[i] = make_update(n_vertex+i, vertices[i], tree, n_dims=n_dims)
+        updates[i] = make_update(i+n_vertex, vertices[i], tree, n_dims=n_dims)
     end
     for i in 1:length(vertices)
         insert_point!(tree, updates[i])
@@ -113,8 +127,8 @@ end
 
 
 function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
-    occupancy = Dict{Int, Vector{Int}}()
     for chunk in Iterators.partition(1:length(points), batch_size)
+        occupancy = Dict{Int, Vector{Int}}()
         queue = make_queue!(points[chunk], occupancy, tree)
         consume_multiple_points!(queue, tree, occupancy, n_dims)
     end
