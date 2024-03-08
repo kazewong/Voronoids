@@ -10,7 +10,7 @@ end
 
 function parallel_locate(vertices::Vector{Vector{Float64}}, tree::DelaunayTree)::Vector{Vector{Int}}
     output = Vector{Vector{Int}}(undef, length(vertices))
-    chunks = collect(Iterators.partition(eachindex(vertices), length(vertices) ÷ Threads.nthreads()))
+    chunks = collect(Iterators.partition(eachindex(vertices), max(length(vertices) ÷ Threads.nthreads(),1)))
     Threads.@threads for chunk in chunks
         output[chunk] = batch_locate(vertices[chunk], tree)
     end
@@ -94,10 +94,6 @@ end
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
     n_vertex = length(tree.vertices)
-    # chunk = collect(Iterators.partition(1:length(vertices), max(length(vertices) ÷ Threads.nthreads(),1)))
-    # Threads.@threads for i in chunk
-    #     updates[i] = batch_update(i .+ n_vertex, vertices[i], tree, n_dims=n_dims)
-    # end
     Threads.@threads for i in 1:length(vertices)
         updates[i] = make_update(i+n_vertex, vertices[i], tree, n_dims=n_dims)
     end
