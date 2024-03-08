@@ -61,7 +61,7 @@ end
 end
 
 mutable struct Event
-    state::EventState
+    @atomic state::EventState
     id::Int
     blocked_by::Vector{Int}
     task::Task
@@ -69,26 +69,32 @@ mutable struct Event
 end
 
 function run_event(e::Event, event_list::Vector{Event},inserted::Vector{Bool})
-    state = e.state
+    state = @atomic e.state
     if state == WAITING
         while state !== READY
-            if all(inserted[e.blocked_by]) || length(e.blocked_by) == 0
-                schedule(e.task)
-                e.state = READY
-                break
+            state, ok = @atomicreplace(e.state, state => READY)
+            if ok
+                if all(inserted[e.blocked_by]) || length(e.blocked_by) == 0
+                    schedule(e.task)
+                    break
+                end    
             end
         end
         while state !== COMPLETED && state !== FAILED
-            if istaskdone(e.task)
+            state, ok = @atomicreplace(e.state, state => COMPLETED)
+            if ok
                 inserted[e.id] = true
-                e.state = COMPLETED
+            end
+            # if istaskdone(e.task)
+            #     inserted[e.id] = true
+            #     e.state = COMPLETED
                 # for i in e.id+1:length(inserted)
                 #     if event_list[i].state == WAITING
                 #         run_event(event_list[i], event_list, inserted)
                 #     end
                 #     break
                 # end
-            end
+            # end
         end
     end
 end
