@@ -1,5 +1,3 @@
-
-
 function batch_locate(vertices::AbstractArray, tree::DelaunayTree)
     output = Vector{Vector{Int}}(undef, length(vertices))
     for i in 1:length(vertices)
@@ -55,6 +53,60 @@ function make_queue!(points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vecto
     return queue
 end
 
+@enum EventState begin
+    WAITING
+    READY
+    COMPLETED
+    FAILED
+end
+
+mutable struct Event
+    state::EventState
+    id::Int
+    blocked_by::Vector{Int}
+    task::Task
+    Event(tree::DelaunayTree, point::Vector{Float64}, id::Int, blocked_by::Vector{Int}; n_dims::Int = 3) = new(WAITING, id, blocked_by, Task(() -> add_vertex!(tree, point, n_dims=n_dims)))
+end
+
+function run_event(e::Event, event_list::Vector{Event},inserted::Vector{Bool})
+    state = e.state
+    if state == WAITING
+        while state !== READY
+            if all(inserted[e.blocked_by]) || length(e.blocked_by) == 0
+                schedule(e.task)
+                e.state = READY
+                break
+            end
+        end
+        while state !== COMPLETED && state !== FAILED
+            if istaskdone(e.task)
+                inserted[e.id] = true
+                e.state = COMPLETED
+                # for i in e.id+1:length(inserted)
+                #     if event_list[i].state == WAITING
+                #         run_event(event_list[i], event_list, inserted)
+                #     end
+                #     break
+                # end
+            end
+        end
+    end
+end
+
+function make_event(id::Int, point::Vector{Float64}, neighbors::Vector{Int}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree; n_dims::Int=3)
+    order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors))))
+    blocked_by = order_id[1:findfirst(x->x==id, order_id)-1]
+    return Event(tree, point, id, blocked_by, n_dims=n_dims)
+end
+
+function make_event(queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree; n_dims::Int=3)
+    events = Vector{Event}(undef, length(queue))
+    Threads.@threads for i in 1:length(queue)
+        events[i] = make_event(queue[i][1], queue[i][2], queue[i][3], occupancy, tree, n_dims=n_dims)
+    end
+    return events
+end
+
 function find_placement!(placement::Vector{Int}, start_id::Int, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})
     if placement[start_id] ==0
         order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors[start_id]))))
@@ -81,15 +133,6 @@ function find_placement(neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Ve
     println("Unique placement: ", maximum(placement))
     return placement
 end
-
-function batch_update(ids::UnitRange{Int}, vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int)
-    output = Vector{TreeUpdate}(undef, length(ids))
-    for i in 1:length(ids)
-        output[i] = make_update(ids[i], vertices[i], tree, n_dims=n_dims)
-    end
-    return output
-end
-
 
 function add_multiple_vertex!(tree::DelaunayTree, vertices::Vector{Vector{Float64}}; n_dims::Int)
     updates = Vector{TreeUpdate}(undef, length(vertices))
@@ -131,4 +174,4 @@ function parallel_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n
 
 end
 
-export parallel_locate, batch_locate, identify_conflicts, make_queue!, find_placement!, find_placement, consume_multiple_points!, parallel_insert!
+export parallel_locate, batch_locate, identify_conflicts, make_queue!, find_placement!, find_placement, consume_multiple_points!, parallel_insert!, Event, EventState, run_event, make_event
