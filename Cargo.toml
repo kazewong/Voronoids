@@ -2,14 +2,18 @@
 name = "voronoids"
 version = "0.1.0"
 edition = "2021"
+<<<<<<< HEAD
 authors = ["Kaze Wong <kazewong.physics@gmail.com>"]
 description = "A library for generating Voronoi diagrams in parallel in Rust."
 license = "MIT"
+=======
+>>>>>>> 211cf90 (I am fed up with Julia's multithreading)
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 kiddo = "4.2.0"
+<<<<<<< HEAD
 nalgebra = "0.32.4"
 ndarray = "0.15.6"
 plotter = "0.1.0"
@@ -19,3 +23,5 @@ rayon = "1.9.0"
 
 [env]
 RUST_BACKTRACE=1
+=======
+>>>>>>> 211cf90 (I am fed up with Julia's multithreading)
