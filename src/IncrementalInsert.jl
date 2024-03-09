@@ -221,14 +221,6 @@ function add_vertex!(tree::DelaunayTree, point::Vector{Float64}; n_dims::Int=3)
     add_point!(tree.kdtree, point)
 end
 
-function add_vertex!(tree::DelaunayTree, point::Vector{Float64}, lk::ReentrantLock; n_dims::Int=3)
-    lock(lk)
-    update = make_update(point, tree, n_dims=n_dims)
-    insert_point!(tree, update)
-    add_point!(tree.kdtree, point)
-    unlock(lk)
-end
-
 function serial_insert!(points::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3)
     for point in points
         add_vertex!(tree, point, n_dims=n_dims)

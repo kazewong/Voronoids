@@ -31,42 +31,30 @@ parallel_insert!(test_points2, tree, n_dims=n_dims, batch_size=batch_size)
 
 parallel_tree = deepcopy(tree)
 
-test_points3 = [rand(n_dims) for i in 1:1e5]
+test_points3 = [rand(n_dims) for i in 1:1e4]
 inserted = fill(false, length(test_points3))
 
+n_parallel = 10000
 
 occupancy = Dict{Int, Vector{Int}}()
 queue = make_queue!(test_points3, occupancy, parallel_tree)
+channel = Channel{Tuple{Int,TreeUpdate}}(n_parallel)
+event = make_event(queue, occupancy)
+inserted = fill(false, length(event))
+scheduled = fill(false, length(event))
+
 lk = ReentrantLock()
-event = make_event(queue, occupancy, parallel_tree, lk, n_dims=n_dims)
-partition = collect(Iterators.partition(1:length(event), max(length(event) ÷ Threads.nthreads(),1)))
+t = @async while !all(inserted) || !isempty(channel)
+    # println("Inserting")
+    insert_point!(channel, parallel_tree, inserted, lk)
+end
 while !all(inserted)
     timer = time()
     points = sum(inserted)
-    Threads.@threads for chunk in partition
-        for i in chunk
-            run_event(event[i], inserted)
-        end
+    queue_index = event[inserted.==false]
+    queue_index = event[1:min(length(queue_index), n_parallel)]
+    for i in queue_index
+        run_event(channel, i, inserted, scheduled, parallel_tree)
     end
     println("Insert per second: ", (sum(inserted)- points)/(time()-timer))
 end
-# placement = find_placement(getindex.(queue, 3), occupancy)
-# all_vertices = getindex.(queue, 2)
-# test_vertices = all_vertices[findall(x->x==1, placement)]
-# updates = Vector{TreeUpdate}(undef, length(test_vertices))
-# n_vertex = length(parallel_tree.vertices)
-# max_time = 0.0
-# min_time = Inf
-# for i in 1:length(test_vertices)
-#     timer = time()
-#     updates[i] = make_update(i+n_vertex, test_vertices[i], parallel_tree, n_dims=n_dims)
-#     max_time = max(max_time, time()-timer)
-#     min_time = min(min_time, time()-timer)
-# end
-
-# partition = collect(Iterators.partition(1:length(test_vertices), max(length(test_vertices) ÷ Threads.nthreads(),1)))
-# Threads.@threads for range in partition
-#     for i in range
-#         updates[i] = make_update(i+n_vertex, test_vertices[i], parallel_tree, n_dims=n_dims)
-#     end
-# end
