@@ -117,17 +117,22 @@ impl DelaunayTree{
     }
 }
 
-// impl <T: std::marker::Copy + std::default::Default> TreeUpdate<T>{
-//     pub fn new(vertex: [T; 3], tree: DelaunayTree<T>) -> Self {
-//         TreeUpdate {
-//             vertex,
-//             killed_sites: vec![],
-//             simplices: vec![],
-//             simplices_id: vec![],
-//             centers: vec![],
-//             radii: vec![],
-//             neighbors: vec![],
-//             new_neighbors: vec![],
-//         }
-//     }
-// }
+impl TreeUpdate{
+    pub fn new(vertex: [f64; 3], tree: DelaunayTree) -> Self {
+        let killed_sites = tree.locate(vertex);
+        let id = tree.vertices.len() + 1;
+        let mut simplices: Vec<Vec<usize>> = vec![];
+        let mut simplices_id: Vec<usize> = vec![];
+
+        TreeUpdate {
+            vertex,
+            killed_sites: vec![],
+            simplices: vec![],
+            simplices_id: vec![],
+            centers: vec![],
+            radii: vec![],
+            neighbors: vec![],
+            new_neighbors: vec![],
+        }
+    }
+}
