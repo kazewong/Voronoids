@@ -5,19 +5,18 @@ use parry3d_f64::bounding_volume::details::point_cloud_bounding_sphere;
 use crate::geometry::circumsphere;
 
 #[derive(Debug, Clone)]
-struct DelaunayTree{
-    kdtree: KdTree<f64, 3>,
-    vertices: Vec<[f64; 3]>,
-    vertices_simplex: Vec<Vec<usize>>,
-
-    simplices: HashMap<usize, Vec<usize>>,
-    centers: HashMap<usize, [f64; 3]>,
-    radii: HashMap<usize, f64>,
-    neighbors: HashMap<usize, Vec<usize>>,
-    max_simplex_id: usize,
+pub struct DelaunayTree{
+    pub kdtree: KdTree<f64, 3>,
+    pub vertices: Vec<[f64; 3]>,
+    pub vertices_simplex: Vec<Vec<usize>>,
+    pub simplices: HashMap<usize, Vec<usize>>,
+    pub centers: HashMap<usize, [f64; 3]>,
+    pub radii: HashMap<usize, f64>,
+    pub neighbors: HashMap<usize, Vec<usize>>,
+    pub max_simplex_id: usize,
 }
 
-struct TreeUpdate{
+pub struct TreeUpdate{
     vertex: [f64; 3],
     killed_sites: Vec<usize>,
     simplices: Vec<Vec<usize>>,
@@ -77,9 +76,21 @@ impl DelaunayTree{
 
     // }
 
-    // pub fn update(&mut self, update: TreeUpdate<T>) {
+    pub fn insert_point(&mut self, update: TreeUpdate) {
+        let mut killed_sites = update.killed_sites;
+        killed_sites.sort();
+        self.vertices.push(update.vertex);
 
-    // }
+        for (i, (neighbor_id, killed_id)) in update.neighbors.iter().enumerate() {
+            for j in 0..self.neighbors[neighbor_id].len() {
+                if self.neighbors[neighbor_id][j] == *killed_id {
+                    self.neighbors.get_mut(neighbor_id).unwrap()[j] = self.max_simplex_id + update.simplices_id[i];
+                }
+            }
+        }
+
+
+    }
 }
 
 // impl <T: std::marker::Copy + std::default::Default> TreeUpdate<T>{
