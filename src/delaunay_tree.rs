@@ -91,9 +91,16 @@ impl DelaunayTree{
         output
     }
 
-    // pub fn check_delaunay(&self) -> bool{
-
-    // }
+    pub fn check_delaunay(&self) -> bool{
+        for (id, simplex) in self.simplices.iter() {
+            for vertex in self.vertices.iter(){
+                if in_sphere(*vertex, *self.centers.get(id).unwrap(), *self.radii.get(id).unwrap()) && !simplex.contains(&id){
+                    return false
+                }
+            }
+        }
+        true
+    }
 
     pub fn insert_point(&mut self, update: TreeUpdate) {
         let mut killed_sites = update.killed_sites;
