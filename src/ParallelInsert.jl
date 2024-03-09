@@ -53,65 +53,41 @@ function make_queue!(points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vecto
     return queue
 end
 
-@enum EventState begin
-    WAITING
-    READY
-    COMPLETED
-    FAILED
-end
-
-mutable struct Event
-    @atomic state::EventState
+struct Event
     id::Int
     blocked_by::Vector{Int}
     task::Task
-    Event(tree::DelaunayTree, point::Vector{Float64}, id::Int, blocked_by::Vector{Int}; n_dims::Int = 3) = new(WAITING, id, blocked_by, Task(() -> add_vertex!(tree, point, n_dims=n_dims)))
+    Event(tree::DelaunayTree, point::Vector{Float64}, id::Int, blocked_by::Vector{Int}, lk::ReentrantLock; n_dims::Int = 3) = new(id, blocked_by, Task(() -> add_vertex!(tree, point,lk, n_dims=n_dims)))
 end
 
-function run_event(e::Event, event_list::Vector{Event},inserted::Vector{Bool})
-    state = @atomic e.state
-    if state == WAITING
-        while state !== READY
-            state, ok = @atomicreplace(e.state, state => READY)
-            if ok
-                if all(inserted[e.blocked_by]) || length(e.blocked_by) == 0
-                    schedule(e.task)
-                    break
-                end    
-            end
-        end
-        while state !== COMPLETED && state !== FAILED
-            state, ok = @atomicreplace(e.state, state => COMPLETED)
-            if ok
-                inserted[e.id] = true
-            end
-            # if istaskdone(e.task)
-            #     inserted[e.id] = true
-            #     e.state = COMPLETED
-                # for i in e.id+1:length(inserted)
-                #     if event_list[i].state == WAITING
-                #         run_event(event_list[i], event_list, inserted)
-                #     end
-                #     break
-                # end
-            # end
-        end
-    end
-end
 
-function make_event(id::Int, point::Vector{Float64}, neighbors::Vector{Int}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree; n_dims::Int=3)
+function make_event(id::Int, point::Vector{Float64}, neighbors::Vector{Int}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree, lk::ReentrantLock; n_dims::Int=3)
     order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors))))
     blocked_by = order_id[1:findfirst(x->x==id, order_id)-1]
-    return Event(tree, point, id, blocked_by, n_dims=n_dims)
+    return Event(tree, point, id, blocked_by, lk, n_dims=n_dims)
 end
 
-function make_event(queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree; n_dims::Int=3)
+function make_event(queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, occupancy::Dict{Int, Vector{Int}}, tree::DelaunayTree, lk::ReentrantLock; n_dims::Int=3)
     events = Vector{Event}(undef, length(queue))
     Threads.@threads for i in 1:length(queue)
-        events[i] = make_event(queue[i][1], queue[i][2], queue[i][3], occupancy, tree, n_dims=n_dims)
+        events[i] = make_event(queue[i][1], queue[i][2], queue[i][3], occupancy, tree, lk, n_dims=n_dims)
     end
     return events
 end
+
+
+function run_event(event::Event, inserted::Vector{Bool})
+    if istaskstarted(event.task)
+        return
+    end
+    if all(inserted[event.blocked_by])
+        schedule(event.task)
+        wait(event.task)
+        inserted[event.id] = true
+    end
+end
+
+
 
 function find_placement!(placement::Vector{Int}, start_id::Int, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})
     if placement[start_id] ==0

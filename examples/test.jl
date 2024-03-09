@@ -31,13 +31,25 @@ parallel_insert!(test_points2, tree, n_dims=n_dims, batch_size=batch_size)
 
 parallel_tree = deepcopy(tree)
 
-test_points3 = [rand(n_dims) for i in 1:1e4]
+test_points3 = [rand(n_dims) for i in 1:1e5]
 inserted = fill(false, length(test_points3))
 
 
 occupancy = Dict{Int, Vector{Int}}()
 queue = make_queue!(test_points3, occupancy, parallel_tree)
-event = make_event(queue, occupancy, parallel_tree, n_dims=n_dims)
+lk = ReentrantLock()
+event = make_event(queue, occupancy, parallel_tree, lk, n_dims=n_dims)
+partition = collect(Iterators.partition(1:length(event), max(length(event) ÷ Threads.nthreads(),1)))
+while !all(inserted)
+    timer = time()
+    points = sum(inserted)
+    Threads.@threads for chunk in partition
+        for i in chunk
+            run_event(event[i], inserted)
+        end
+    end
+    println("Insert per second: ", (sum(inserted)- points)/(time()-timer))
+end
 # placement = find_placement(getindex.(queue, 3), occupancy)
 # all_vertices = getindex.(queue, 2)
 # test_vertices = all_vertices[findall(x->x==1, placement)]
