@@ -44,17 +44,16 @@ inserted = fill(false, length(event))
 scheduled = fill(false, length(event))
 
 lk = ReentrantLock()
-t = @async while !all(inserted) || !isempty(channel)
+t = Threads.@spawn while !all(inserted) || !isempty(channel)
     # println("Inserting")
     insert_point!(channel, parallel_tree, inserted, lk)
 end
 while !all(inserted)
     timer = time()
     points = sum(inserted)
-    queue_index = event[inserted.==false]
-    queue_index = event[1:min(length(queue_index), n_parallel)]
-    for i in queue_index
-        run_event(channel, i, inserted, scheduled, parallel_tree)
+    println(points)
+    for i in event
+        Threads.@spawn run_event(channel, i, inserted, scheduled, parallel_tree, lk)
     end
-    println("Insert per second: ", (sum(inserted)- points)/(time()-timer))
+    # println("Insert per second: ", (sum(inserted)- points)/(time()-timer))
 end

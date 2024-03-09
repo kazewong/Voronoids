@@ -73,21 +73,21 @@ function make_event(queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, occu
     return events
 end
 
-function run_event(channel::Channel{Tuple{Int,TreeUpdate}}, event::Event, inserted::Vector{Bool}, scheduled::Vector{Bool}, tree::DelaunayTree; n_dims::Int=3)
+function run_event(channel::Channel{Tuple{Int,TreeUpdate}}, event::Event, inserted::Vector{Bool}, scheduled::Vector{Bool}, tree::DelaunayTree, lk::ReentrantLock; n_dims::Int=3)
     if all(inserted[event.blocked_by]) && !scheduled[event.id]
-        # Threads.@spawn put!(channel, (event.id, make_update(event.point, tree, n_dims=n_dims)))
-        put!(channel, (event.id, make_update(event.point, tree, n_dims=n_dims)))
+        lock(lk) do
+        update = make_update(event.point, tree, n_dims=n_dims)
+        put!(channel, (event.id, update))
         scheduled[event.id] = true
+        end
     end
 end
 
 function insert_point!(channel::Channel{Tuple{Int,TreeUpdate}},tree::DelaunayTree, inserted::Vector{Bool}, lk::ReentrantLock)
-    lock(lk) do
-        id, update = take!(channel)
-        insert_point!(tree, update)
-        add_point!(tree.kdtree, update.vertices)
-        inserted[id] = true
-    end
+    id, update = take!(channel)
+    insert_point!(tree, update)
+    add_point!(tree.kdtree, update.vertices)
+    inserted[id] = true
 end
 
 function parallel_insert!(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
