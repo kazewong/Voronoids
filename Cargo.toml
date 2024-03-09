@@ -10,4 +10,6 @@ license = "MIT"
 
 [dependencies]
 kiddo = "4.2.0"
+nalgebra = "0.32.4"
 ndarray = "0.15.6"
+parry3d-f64 = "0.13.6"

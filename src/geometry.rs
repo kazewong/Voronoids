@@ -1,4 +1,4 @@
-fn circumsphere(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
+pub fn circumsphere(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
     let a = [
         vertices[1][0] - vertices[0][0],
         vertices[1][1] - vertices[0][1],
