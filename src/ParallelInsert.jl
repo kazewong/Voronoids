@@ -53,61 +53,61 @@ function make_queue!(points::Vector{Vector{Float64}}, occupancy::Dict{Int, Vecto
     return queue
 end
 
-struct Event
-    id::Int
-    point::Vector{Float64}
-    blocked_by::Vector{Int}
-end
+# struct Event
+#     id::Int
+#     point::Vector{Float64}
+#     blocked_by::Vector{Int}
+# end
 
-function make_event(id::Int, point::Vector{Float64}, neighbors::Vector{Int}, occupancy::Dict{Int, Vector{Int}})
-    order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors))))
-    blocked_by = order_id[1:findfirst(x->x==id, order_id)-1]
-    return Event(id, point, blocked_by)
-end
+# function make_event(id::Int, point::Vector{Float64}, neighbors::Vector{Int}, occupancy::Dict{Int, Vector{Int}})
+#     order_id = sort(unique(reduce(vcat, map(x->occupancy[x], neighbors))))
+#     blocked_by = order_id[1:findfirst(x->x==id, order_id)-1]
+#     return Event(id, point, blocked_by)
+# end
 
-function make_event(queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, occupancy::Dict{Int, Vector{Int}})
-    events = Vector{Event}(undef, length(queue))
-    Threads.@threads for i in 1:length(queue)
-        events[i] = make_event(queue[i][1], queue[i][2], queue[i][3], occupancy)
-    end
-    return events
-end
+# function make_event(queue::Vector{Tuple{Int, Vector{Float64},Vector{Int}}}, occupancy::Dict{Int, Vector{Int}})
+#     events = Vector{Event}(undef, length(queue))
+#     Threads.@threads for i in 1:length(queue)
+#         events[i] = make_event(queue[i][1], queue[i][2], queue[i][3], occupancy)
+#     end
+#     return events
+# end
 
-function run_event(channel::Channel{Tuple{Int,TreeUpdate}}, event::Event, inserted::Vector{Bool}, scheduled::Vector{Bool}, tree::DelaunayTree, lk::ReentrantLock; n_dims::Int=3)
-    if all(inserted[event.blocked_by]) && !scheduled[event.id]
-        lock(lk) do
-        update = make_update(event.point, tree, n_dims=n_dims)
-        put!(channel, (event.id, update))
-        scheduled[event.id] = true
-        end
-    end
-end
+# function run_event(channel::Channel{Tuple{Int,TreeUpdate}}, event::Event, inserted::Vector{Bool}, scheduled::Vector{Bool}, tree::DelaunayTree, lk::ReentrantLock; n_dims::Int=3)
+#     if all(inserted[event.blocked_by]) && !scheduled[event.id]
+#         update = make_update(event.point, tree, n_dims=n_dims)
+#         put!(channel, (event.id, update))
+#         scheduled[event.id] = true
+#     end
+# end
 
-function insert_point!(channel::Channel{Tuple{Int,TreeUpdate}},tree::DelaunayTree, inserted::Vector{Bool}, lk::ReentrantLock)
-    id, update = take!(channel)
-    insert_point!(tree, update)
-    add_point!(tree.kdtree, update.vertices)
-    inserted[id] = true
-end
+# function insert_point!(channel::Channel{Tuple{Int,TreeUpdate}},tree::DelaunayTree, inserted::Vector{Bool}, lk::ReentrantLock)
+#     id, update = take!(channel)
+#     lock(lk) do
+#         insert_point!(tree, update)
+#         add_point!(tree.kdtree, update.vertices)
+#         inserted[id] = true
+#     end
+# end
 
-function parallel_insert!(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
-    occupancy = Dict{Int, Vector{Int}}()
-    queue = make_queue!(vertices, occupancy, tree, batch_size=batch_size)
-    channel = Channel{Tuple{Int,TreeUpdate}}(length(queue))
-    event = make_event(channel, queue, occupancy, tree, n_dims=n_dims)
-    inserted = fill(false, length(vertices))
-    Threads.@spawn while !all(inserted)
-        insert_point!(channel, tree, inserted)
-    end
-    while !all(inserted)
-        timer = time()
-        points = sum(inserted)
-        for i in 1:length(event)
-            Threads.@spawn run_event(event[i], inserted)
-        end
-        println("Insert per second: ", (sum(inserted)- points)/(time()-timer))
-    end    
-end
+# function parallel_insert!(vertices::Vector{Vector{Float64}}, tree::DelaunayTree; n_dims::Int=3, batch_size::Int=256)
+#     occupancy = Dict{Int, Vector{Int}}()
+#     queue = make_queue!(vertices, occupancy, tree, batch_size=batch_size)
+#     channel = Channel{Tuple{Int,TreeUpdate}}(length(queue))
+#     event = make_event(channel, queue, occupancy, tree, n_dims=n_dims)
+#     inserted = fill(false, length(vertices))
+#     Threads.@spawn while !all(inserted)
+#         insert_point!(channel, tree, inserted)
+#     end
+#     while !all(inserted)
+#         timer = time()
+#         points = sum(inserted)
+#         for i in 1:length(event)
+#             Threads.@spawn run_event(event[i], inserted)
+#         end
+#         println("Insert per second: ", (sum(inserted)- points)/(time()-timer))
+#     end    
+# end
 
 function find_placement!(placement::Vector{Int}, start_id::Int, neighbors::Vector{Vector{Int}},  occupancy::Dict{Int, Vector{Int}})
     if placement[start_id] ==0

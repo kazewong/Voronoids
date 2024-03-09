@@ -74,6 +74,27 @@ function circumsphere(vertices::Vector{Vector{Float64}}; n_dims::Int=3)
     end
 end
 
+function circumsphere2(vertices::Vector{Vector{Float64}})
+    a = vertices[2] .- vertices[1]
+    b = vertices[3] .- vertices[1]
+    c = vertices[4] .- vertices[1]
+
+    length_a = dot(a, a)
+    length_b = dot(b, b)
+    length_c = dot(c, c)
+
+    a_cross_b = cross(a, b)
+    b_cross_c = cross(b, c)
+    c_cross_a = cross(c, a)
+
+    denominator = 0.5 / dot(a, b_cross_c)
+    
+    center = (length_a * b_cross_c + length_b * c_cross_a + length_c * a_cross_b) * denominator
+    radius = norm(center - vertices[1])
+
+    return (center, radius)
+end
+
 function check_delaunay(tree::DelaunayTree; n_dims::Int=3)
     if n_dims==3
         for i in keys(tree.simplices)
@@ -179,7 +200,7 @@ function make_new_neighbors(simplices::Vector{Vector{Int}}, simplices_id:: Vecto
 end
 
 
-function make_update(id::Int, point::Vector{Float64}, killed_sites:: Vector{Int}, tree::DelaunayTree; n_dims::Int=3)::TreeUpdate
+function make_update(id::Int, point::Vector{Float64}, killed_sites:: Vector{Int}, tree::DelaunayTree; n_dims::Int=3)#::TreeUpdate
     if length(killed_sites) == 0
         println("Point: ", point)
         throw(ArgumentError("The point is already in the Delaunay triangulation"))
