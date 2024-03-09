@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use kiddo::KdTree;
+use kiddo::{KdTree, SquaredEuclidean};
 use nalgebra::Point3;
 use parry3d_f64::bounding_volume::details::point_cloud_bounding_sphere;
-use crate::geometry::circumsphere;
+use crate::geometry::{circumsphere, in_sphere};
 
 #[derive(Debug, Clone)]
 pub struct DelaunayTree{
@@ -68,9 +68,28 @@ impl DelaunayTree{
         delaunay_tree
     }
 
-    // pub fn locate(&self, vertex: [T; 3]) -> Option<usize> {
-    //     self.kdtree.nearest(&vertex, 1).map(|(id, _)| id)
-    // }
+    fn find_all_neighbors(self, output: &mut Vec<usize>, node_id:usize, vertex: [f64; 3]) -> Vec<usize>{
+        let neighbors = self.neighbors.get(&node_id).unwrap();
+        for neighbor in neighbors {
+            if !output.contains(neighbor) && in_sphere(vertex, *self.centers.get(neighbor).unwrap(), *self.radii.get(neighbor).unwrap()) {
+                output.push(*neighbor);
+                self.clone().find_all_neighbors(output, *neighbor, vertex);
+            }
+        }
+        output.to_vec()
+    }
+
+    pub fn locate(&self, vertex: [f64; 3]) -> Vec<usize>{
+        let mut output: Vec<usize> = vec![];
+        let simplex_id = &self.vertices_simplex[self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize];
+        for id in simplex_id {
+            if in_sphere(vertex, *self.centers.get(id).unwrap(), *self.radii.get(id).unwrap()) {
+                output.push(*id);
+                output = self.clone().find_all_neighbors(&mut output, *id, vertex);
+            }
+        }
+        output
+    }
 
     // pub fn check_delaunay(&self) -> bool{
 
@@ -88,8 +107,6 @@ impl DelaunayTree{
                 }
             }
         }
-
-
     }
 }
 

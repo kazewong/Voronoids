@@ -50,3 +50,10 @@ pub fn circumsphere(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
     (center, radius.sqrt())
 
 }
+
+pub fn in_sphere(vertex: [f64; 3], center: [f64; 3], radius: f64) -> bool {
+    let distance = (center[0] - vertex[0]) * (center[0] - vertex[0])
+        + (center[1] - vertex[1]) * (center[1] - vertex[1])
+        + (center[2] - vertex[2]) * (center[2] - vertex[2]);
+    distance < radius * radius
+}
