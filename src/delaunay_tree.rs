@@ -9,7 +9,7 @@ pub struct DelaunayTree {
     pub kdtree: KdTree<f64, 3>,
     pub vertices: Vec<[f64; 3]>,
     pub vertices_simplex: Vec<Vec<usize>>,
-    pub simplices: HashMap<usize, Vec<usize>>,
+    pub simplices: HashMap<usize, [usize; 4]>,
     pub centers: HashMap<usize, [f64; 3]>,
     pub radii: HashMap<usize, f64>,
     pub neighbors: HashMap<usize, Vec<usize>>,
@@ -19,7 +19,7 @@ pub struct DelaunayTree {
 pub struct TreeUpdate {
     vertex: [f64; 3],
     killed_sites: Vec<usize>,
-    simplices: Vec<Vec<usize>>,
+    simplices: Vec<[usize;4]>,
     simplices_id: Vec<usize>,
     centers: Vec<[f64; 3]>,
     radii: Vec<f64>,
@@ -66,37 +66,37 @@ impl DelaunayTree {
         }
 
         let vertices_simplex = [
-            vec![1, 2, 3, 4],
-            vec![1, 2, 4, 5],
-            vec![1, 2, 3, 5],
-            vec![1, 3, 4, 5],
+            vec![0, 1, 2, 3],
+            vec![0, 1, 3, 4],
+            vec![0, 1, 2, 4],
+            vec![0, 2, 3, 4],
+            vec![1],
             vec![2],
             vec![3],
             vec![4],
-            vec![5],
         ]
         .to_vec();
         let simplices = HashMap::from([
-            (1, vec![1, 2, 3, 4]),
-            (2, vec![5, 1, 2, 3]),
-            (3, vec![6, 1, 3, 4]),
-            (4, vec![7, 1, 4, 2]),
-            (5, vec![8, 2, 3, 4]),
+            (0, [0, 1, 2, 3]),
+            (1, [4, 0, 1, 2]),
+            (2, [5, 0, 2, 3]),
+            (3, [6, 0, 3, 1]),
+            (4, [7, 1, 2, 3]),
         ]);
         let centers = HashMap::from([
-            (1, center.into()),
+            (0, center.into()),
+            (1, [0., 0., 0.]),
             (2, [0., 0., 0.]),
             (3, [0., 0., 0.]),
             (4, [0., 0., 0.]),
-            (5, [0., 0., 0.]),
         ]);
-        let radii = HashMap::from([(1, radius), (2, 0.), (3, 0.), (4, 0.), (5, 0.)]);
+        let radii = HashMap::from([(0, radius), (1, 0.), (2, 0.), (3, 0.), (4, 0.)]);
         let neighbors = HashMap::from([
-            (1, vec![2, 3, 4, 5]),
-            (2, vec![1]),
-            (3, vec![1]),
-            (4, vec![1]),
-            (5, vec![1]),
+            (0, vec![1, 2, 3, 4]),
+            (1, vec![0]),
+            (2, vec![0]),
+            (3, vec![0]),
+            (4, vec![0]),
         ]);
         let delaunay_tree = DelaunayTree {
             kdtree,
@@ -106,7 +106,7 @@ impl DelaunayTree {
             centers,
             radii,
             neighbors,
-            max_simplex_id: 5,
+            max_simplex_id: 4,
         };
         delaunay_tree
     }
@@ -144,7 +144,7 @@ impl DelaunayTree {
 
     pub fn get_new_simplices(
         &self,
-        killed_site: usize,
+        killed_site_id: usize,
         vertex: [f64; 3],
         vertex_id: usize,
     ) -> (
@@ -159,12 +159,32 @@ impl DelaunayTree {
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
-        for neighbor_id in self.neighbors.get(&killed_site).unwrap() {
+        let killed_site: [usize; 4] = *self.simplices.get(&killed_site_id).unwrap();
+
+        for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
+            let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
             if !in_sphere(vertex, *self.centers.get(neighbor_id).unwrap(), *self.radii.get(neighbor_id).unwrap()) {
-                continue;
+                let mut new_simplex = [0, 0, 0, 0];
+                for i in 0..4 {
+                    if killed_site.contains(&neighbor_simplex[i]) {
+                        new_simplex[i] = neighbor_simplex[i];
+                    } else {
+                        new_simplex[i] = vertex_id;
+                    }
+                }
+                let (center, radius) = circumsphere([
+                    self.vertices[new_simplex[0]],
+                    self.vertices[new_simplex[1]],
+                    self.vertices[new_simplex[2]],
+                    self.vertices[new_simplex[3]],
+                ]);
+                simplices.push(new_simplex.to_vec());
+                simplices_id.push(self.max_simplex_id + simplices.len());
+                centers.push(center);
+                radii.push(radius);
+                neighbors.push((*neighbor_id, killed_site_id));
             }
         }
-           
         (simplices, centers, radii, neighbors)
     }
 
