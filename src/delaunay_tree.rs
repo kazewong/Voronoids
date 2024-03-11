@@ -129,7 +129,9 @@ impl DelaunayTree {
                     *vertex,
                     *self.centers.get(id).unwrap(),
                     *self.radii.get(id).unwrap(),
-                ) && !simplex.contains(&id)
+                ) && !simplex.contains(&id) && simplex.iter().all(|&x| {
+                    x > 7
+                })
                 {
                     return false;
                 }
