@@ -166,7 +166,24 @@ impl DelaunayTree {
             }
         }
 
+        for (new_neighbor_id1, new_neighbor_id2) in update.new_neighbors.iter(){
+            self.neighbors.get_mut(&(self.max_simplex_id+*new_neighbor_id1)).unwrap().push(self.max_simplex_id*new_neighbor_id2);
+        }
+
         // Update vertices_simplex
+
+        self.vertices_simplex.push(vec![]);
+        for i in 0..update.simplices.len() {
+            for j in 0..4 {
+                self.vertices_simplex[update.simplices[i][j]].push(self.max_simplex_id + update.simplices_id[i]);
+            }
+        }
+        for killed_site_id in killed_sites.iter() {
+            for i in 0..4 {
+                let index = self.vertices_simplex[update.simplices[0][i]].iter().position(|&x| x == *killed_site_id).unwrap();
+                self.vertices_simplex[update.simplices[0][i]].remove(index);
+            }
+        }
 
         // Remove killed sites
         for killed_sites_id in killed_sites.iter() {
