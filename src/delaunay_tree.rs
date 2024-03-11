@@ -234,21 +234,23 @@ impl DelaunayTree {
 
 fn pair_simplices(simplices: &Vec<[usize; 4]>, simplices_id: &Vec<usize>) -> Vec<(usize, usize)> {
     let mut new_neighbors: Vec<(usize, usize)> = vec![];
-    // for i in 0..simplices.len() {
-    //     for j in 0..simplices.len() {
-    //         if i != j {
-    //             let mut count = 0;
-    //             for k in 0..4 {
-    //                 if simplices[i].contains(&simplices[j][k]) {
-    //                     count += 1;
-    //                 }
-    //             }
-    //             if count == 3 {
-    //                 new_neighbors.push((simplices_id[i], simplices_id[j]));
-    //             }
-    //         }
-    //     }
-    // }
+    let n_simplices = simplices.len();
+    for i in 0..n_simplices {
+        for j in i..n_simplices {
+            if i != j {
+                let mut count = 0;
+                for k in 0..4 {
+                    if simplices[i].contains(&simplices[j][k]) {
+                        count += 1;
+                    }
+                }
+                if count == 3 {
+                    new_neighbors.push((simplices_id[i], simplices_id[j]));
+                    new_neighbors.push((simplices_id[j], simplices_id[i]));
+                }
+            }
+        }
+    }
     new_neighbors
 }
 
