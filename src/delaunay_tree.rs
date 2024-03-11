@@ -180,8 +180,7 @@ impl DelaunayTree {
         }
         for killed_site_id in killed_sites.iter() {
             for i in 0..4 {
-                let index = self.vertices_simplex[update.simplices[0][i]].iter().position(|&x| x == *killed_site_id).unwrap();
-                self.vertices_simplex[update.simplices[0][i]].remove(index);
+                self.vertices_simplex[update.simplices[*killed_site_id][i]].retain(|&x| x != *killed_site_id);
             }
         }
 

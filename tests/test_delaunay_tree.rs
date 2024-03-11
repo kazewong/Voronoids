@@ -8,9 +8,10 @@ fn test_delaunay_tree() {
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0],
     ];
-    let delaunay_tree = DelaunayTree::new(vertices);
+    let mut delaunay_tree = DelaunayTree::new(vertices);
     assert_eq!(delaunay_tree.max_simplex_id, 4);
     let new_point = [0.5, 0.5, 0.5];
     let update = TreeUpdate::new(new_point, &delaunay_tree);
+    delaunay_tree.insert_point(update);
     assert!(delaunay_tree.check_delaunay());
 }
