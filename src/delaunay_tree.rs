@@ -19,7 +19,7 @@ pub struct DelaunayTree {
 pub struct TreeUpdate {
     vertex: [f64; 3],
     killed_sites: Vec<usize>,
-    simplices: Vec<[usize;4]>,
+    simplices: Vec<[usize; 4]>,
     simplices_id: Vec<usize>,
     centers: Vec<[f64; 3]>,
     radii: Vec<f64>,
@@ -148,12 +148,12 @@ impl DelaunayTree {
         vertex: [f64; 3],
         vertex_id: usize,
     ) -> (
-        Vec<Vec<usize>>,
+        Vec<[usize; 4]>,
         Vec<[f64; 3]>,
         Vec<f64>,
         Vec<(usize, usize)>,
     ) {
-        let mut simplices: Vec<Vec<usize>> = vec![];
+        let mut simplices: Vec<[usize; 4]> = vec![];
         let mut simplices_id: Vec<usize> = vec![];
         let mut centers: Vec<[f64; 3]> = vec![];
         let mut radii: Vec<f64> = vec![];
@@ -163,7 +163,11 @@ impl DelaunayTree {
 
         for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
             let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
-            if !in_sphere(vertex, *self.centers.get(neighbor_id).unwrap(), *self.radii.get(neighbor_id).unwrap()) {
+            if !in_sphere(
+                vertex,
+                *self.centers.get(neighbor_id).unwrap(),
+                *self.radii.get(neighbor_id).unwrap(),
+            ) {
                 let mut new_simplex = [0, 0, 0, 0];
                 for i in 0..4 {
                     if killed_site.contains(&neighbor_simplex[i]) {
@@ -178,7 +182,7 @@ impl DelaunayTree {
                     self.vertices[new_simplex[2]],
                     self.vertices[new_simplex[3]],
                 ]);
-                simplices.push(new_simplex.to_vec());
+                simplices.push(new_simplex);
                 simplices_id.push(self.max_simplex_id + simplices.len());
                 centers.push(center);
                 radii.push(radius);
@@ -186,6 +190,23 @@ impl DelaunayTree {
             }
         }
         (simplices, centers, radii, neighbors)
+    }
+
+    fn locate(&self, vertex: [f64; 3]) -> Vec<usize> {
+        let mut output: Vec<usize> = vec![];
+        let simplex_id = &self.vertices_simplex
+            [self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize];
+        for id in simplex_id {
+            if in_sphere(
+                vertex,
+                *self.centers.get(id).unwrap(),
+                *self.radii.get(id).unwrap(),
+            ) {
+                output.push(*id);
+                output = self.clone().find_all_neighbors(&mut output, *id, vertex);
+            }
+        }
+        output
     }
 
     fn find_all_neighbors(
@@ -209,44 +230,62 @@ impl DelaunayTree {
         }
         output.to_vec()
     }
+}
 
-    fn locate(&self, vertex: [f64; 3]) -> Vec<usize> {
-        let mut output: Vec<usize> = vec![];
-        let simplex_id = &self.vertices_simplex
-            [self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize];
-        for id in simplex_id {
-            if in_sphere(
-                vertex,
-                *self.centers.get(id).unwrap(),
-                *self.radii.get(id).unwrap(),
-            ) {
-                output.push(*id);
-                output = self.clone().find_all_neighbors(&mut output, *id, vertex);
-            }
-        }
-        output
-    }
+fn pair_simplices(simplices: &Vec<[usize; 4]>, simplices_id: &Vec<usize>) -> Vec<(usize, usize)> {
+    let mut new_neighbors: Vec<(usize, usize)> = vec![];
+    // for i in 0..simplices.len() {
+    //     for j in 0..simplices.len() {
+    //         if i != j {
+    //             let mut count = 0;
+    //             for k in 0..4 {
+    //                 if simplices[i].contains(&simplices[j][k]) {
+    //                     count += 1;
+    //                 }
+    //             }
+    //             if count == 3 {
+    //                 new_neighbors.push((simplices_id[i], simplices_id[j]));
+    //             }
+    //         }
+    //     }
+    // }
+    new_neighbors
 }
 
 impl TreeUpdate {
     pub fn new(vertex: [f64; 3], tree: DelaunayTree) -> Self {
         let killed_sites = tree.locate(vertex);
         let id = tree.vertices.len() + 1;
-        let mut simplices: Vec<Vec<usize>> = vec![];
+        let mut simplices: Vec<[usize; 4]> = vec![];
         let mut simplices_id: Vec<usize> = vec![];
         let mut centers: Vec<[f64; 3]> = vec![];
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
+        let mut simplices_counter = 0;
+
+        for i in 0..killed_sites.len() {
+            let (simplices_, centers_, radii_, neighbors_) =
+                tree.get_new_simplices(killed_sites[i], vertex, id);
+            simplices.extend(simplices_.clone());
+            centers.extend(centers_);
+            radii.extend(radii_);
+            neighbors.extend(neighbors_);
+            simplices_id.extend((simplices_counter..simplices_counter + simplices_.len()).collect::<Vec<usize>>());
+            simplices_counter += simplices_.len();
+        }
+
+        let new_neighbors: Vec<(usize, usize)> = pair_simplices(&simplices, &simplices_id);
+
         TreeUpdate {
             vertex,
-            killed_sites: vec![],
-            simplices: vec![],
-            simplices_id: vec![],
-            centers: vec![],
-            radii: vec![],
-            neighbors: vec![],
-            new_neighbors: vec![],
+            killed_sites,
+            simplices,
+            simplices_id,
+            centers,
+            radii,
+            neighbors,
+            new_neighbors,
         }
     }
 }
