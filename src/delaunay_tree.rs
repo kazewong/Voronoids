@@ -55,6 +55,17 @@ impl DelaunayTree {
             [0. + center[0], 0. + center[1], radius + center[2]],
             [radius + center[0], 0. + center[1], -radius + center[2]],
         ];
+
+        let vertices = vec![
+            first_vertex,
+            second_vertex,
+            third_vertex,
+            fourth_vertex,
+            ghost_vertex[0],
+            ghost_vertex[1],
+            ghost_vertex[2],
+            ghost_vertex[3],
+        ];
         let mut kdtree = KdTree::new();
 
         kdtree.add(&first_vertex, 0);
@@ -132,6 +143,20 @@ impl DelaunayTree {
         killed_sites.sort();
         self.vertices.push(update.vertex);
 
+        // Update simplices
+        for (i, simplex) in update.simplices.iter().enumerate() {
+            let current_id = self.max_simplex_id + update.simplices_id[i];
+            self.simplices.insert(current_id, *simplex);
+            self.centers.insert(current_id, update.centers[i]);
+            self.radii.insert(current_id, update.radii[i]);
+            self.neighbors.insert(
+                current_id,
+                vec![update.neighbors[i].0],
+            );
+        }
+
+        // update neighbor relations
+
         for (i, (neighbor_id, killed_id)) in update.neighbors.iter().enumerate() {
             for j in 0..self.neighbors[neighbor_id].len() {
                 if self.neighbors[neighbor_id][j] == *killed_id {
@@ -140,6 +165,18 @@ impl DelaunayTree {
                 }
             }
         }
+
+        // Update vertices_simplex
+
+        // Remove killed sites
+        for killed_sites_id in killed_sites.iter() {
+            self.simplices.remove(killed_sites_id);
+            self.centers.remove(killed_sites_id);
+            self.radii.remove(killed_sites_id);
+            self.neighbors.remove(killed_sites_id);
+        }
+
+        self.max_simplex_id += update.simplices.len();
     }
 
     pub fn get_new_simplices(
@@ -168,16 +205,16 @@ impl DelaunayTree {
                 *self.centers.get(neighbor_id).unwrap(),
                 *self.radii.get(neighbor_id).unwrap(),
             ) {
-                let mut new_simplex = [0, 0, 0, 0];
+                let mut new_simplex = [vertex_id, 0, 0, 0];
+                let mut count = 1;
                 for i in 0..4 {
                     if killed_site.contains(&neighbor_simplex[i]) {
-                        new_simplex[i] = neighbor_simplex[i];
-                    } else {
-                        new_simplex[i] = vertex_id;
+                        new_simplex[count] = neighbor_simplex[i];
+                        count += 1;
                     }
                 }
                 let (center, radius) = circumsphere([
-                    self.vertices[new_simplex[0]],
+                    vertex,
                     self.vertices[new_simplex[1]],
                     self.vertices[new_simplex[2]],
                     self.vertices[new_simplex[3]],
@@ -255,9 +292,9 @@ fn pair_simplices(simplices: &Vec<[usize; 4]>, simplices_id: &Vec<usize>) -> Vec
 }
 
 impl TreeUpdate {
-    pub fn new(vertex: [f64; 3], tree: DelaunayTree) -> Self {
+    pub fn new(vertex: [f64; 3], tree: &DelaunayTree) -> Self {
         let killed_sites = tree.locate(vertex);
-        let id = tree.vertices.len() + 1;
+        let id = tree.vertices.len();
         let mut simplices: Vec<[usize; 4]> = vec![];
         let mut simplices_id: Vec<usize> = vec![];
         let mut centers: Vec<[f64; 3]> = vec![];
@@ -273,7 +310,9 @@ impl TreeUpdate {
             centers.extend(centers_);
             radii.extend(radii_);
             neighbors.extend(neighbors_);
-            simplices_id.extend((simplices_counter..simplices_counter + simplices_.len()).collect::<Vec<usize>>());
+            simplices_id.extend(
+                (simplices_counter..simplices_counter + simplices_.len()).collect::<Vec<usize>>(),
+            );
             simplices_counter += simplices_.len();
         }
 
