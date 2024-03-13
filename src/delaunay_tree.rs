@@ -258,7 +258,9 @@ impl DelaunayTree {
                 *self.centers.get(id).unwrap(),
                 *self.radii.get(id).unwrap(),
             ) {
-                output.push(*id);
+                if !output.contains(id) {
+                    output.push(*id);
+                }                    
                 output = self.clone().find_all_neighbors(&mut output, *id, vertex);
             }
         }
