@@ -33,6 +33,8 @@ fn test_delaunay_tree() {
         let new_point = [dist.sample(&mut rng), dist.sample(&mut rng), dist.sample(&mut rng)];
         let update = TreeUpdate::new(new_point, &delaunay_tree);
         delaunay_tree.insert_point(update);
+        println!("{:?}", delaunay_tree.neighbors);
+        println!("{:?}", delaunay_tree.vertices_simplex);
     }
     // assert!(delaunay_tree.check_delaunay());
 }
