@@ -123,22 +123,24 @@ impl DelaunayTree {
         delaunay_tree
     }
 
-    pub fn check_delaunay(&self) -> bool {
+    pub fn check_delaunay(&self)-> bool{
+        let mut result = true;
         for (id, simplex) in self.simplices.iter() {
-            for vertex in self.vertices.iter() {
+            for (vertex_id, vertex) in self.vertices.iter().enumerate() {
                 if in_sphere(
                     *vertex,
                     *self.centers.get(id).unwrap(),
                     *self.radii.get(id).unwrap(),
-                ) && !simplex.contains(&id) && simplex.iter().all(|&x| {
+                ) && !simplex.contains(&vertex_id) && simplex.iter().all(|&x| {
                     x > 7
                 })
                 {
-                    return false;
+                    result = false;
+                    println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
                 }
             }
         }
-        true
+        result
     }
 
     pub fn insert_point(&mut self, update: TreeUpdate) {
@@ -259,12 +261,12 @@ impl DelaunayTree {
                 *self.centers.get(id).unwrap(),
                 *self.radii.get(id).unwrap(),
             ) {
-                if !output.contains(id) {
-                    output.push(*id);
-                }                    
+                output.push(*id);
                 output = self.clone().find_all_neighbors(&mut output, *id, vertex);
             }
         }
+        output.sort();
+        output.dedup();
         output
     }
 
