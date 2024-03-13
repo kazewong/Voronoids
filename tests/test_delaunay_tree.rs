@@ -22,9 +22,15 @@ fn test_delaunay_tree() {
     //     delaunay_tree.insert_point(update);
     //     delaunay_tree.check_delaunay();
     // }
-    for _ in 0..5 {
+    for i in 0..30 {
+        println!("{:?}", i);
         let point = [dist.sample(&mut rng), dist.sample(&mut rng), dist.sample(&mut rng)];
         let update = TreeUpdate::new(point, &delaunay_tree);
+        let mut keys = delaunay_tree.simplices.keys().collect::<Vec<_>>();
+        keys.sort();
+        for key in  keys{
+            println!("{:?}, {:?}, {:?}", &key, delaunay_tree.simplices[&key], delaunay_tree.neighbors[&key]);
+        }
         delaunay_tree.insert_point(update);
         delaunay_tree.check_delaunay();
     }

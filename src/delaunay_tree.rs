@@ -36,7 +36,7 @@ impl DelaunayTree {
             .map(|v| Point3::new(v[0], v[1], v[2]))
             .collect();
         let (center, mut radius) = point_cloud_bounding_sphere(&points);
-        radius *= 5.0;
+        radius *= 10.0;
 
         let first_vertex = [0. + center[0], 0. + center[1], radius + center[2]];
         let second_vertex = [radius + center[0], 0. + center[1], -radius + center[2]];
