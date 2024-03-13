@@ -16,6 +16,7 @@ pub struct DelaunayTree {
     pub max_simplex_id: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct TreeUpdate {
     vertex: [f64; 3],
     killed_sites: Vec<usize>,
@@ -169,7 +170,7 @@ impl DelaunayTree {
         }
 
         for (new_neighbor_id1, new_neighbor_id2) in update.new_neighbors.iter(){
-            self.neighbors.get_mut(&(self.max_simplex_id+*new_neighbor_id1)).unwrap().push(self.max_simplex_id*new_neighbor_id2);
+            self.neighbors.get_mut(&(self.max_simplex_id+ *new_neighbor_id1)).unwrap().push(self.max_simplex_id + *new_neighbor_id2);
         }
 
         // Update vertices_simplex
@@ -182,7 +183,7 @@ impl DelaunayTree {
         }
         for killed_site_id in killed_sites.iter() {
             for i in 0..4 {
-                self.vertices_simplex[update.simplices[*killed_site_id][i]].retain(|&x| x != *killed_site_id);
+                self.vertices_simplex[self.simplices[killed_site_id][i]].retain(|&x| x != *killed_site_id);
             }
         }
 
@@ -319,7 +320,7 @@ impl TreeUpdate {
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
-        let mut simplices_counter = 0;
+        let mut simplices_counter = 1;
 
         for i in 0..killed_sites.len() {
             let (simplices_, centers_, radii_, neighbors_) =
