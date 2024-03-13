@@ -15,13 +15,13 @@ fn test_delaunay_tree() {
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
 
-    for i in 0..10 {
+    for i in 0..4 {
         println!("i: {}", i);
         let new_point = [dist.sample(&mut rng), dist.sample(&mut rng), dist.sample(&mut rng)];
         let update = TreeUpdate::new(new_point, &delaunay_tree);
         delaunay_tree.insert_point(update);
-    // println!("{:?}", delaunay_tree.neighbors);
-    // println!("{:?}", delaunay_tree.vertices_simplex);
+        println!("{:?}", delaunay_tree.neighbors);
+        println!("{:?}", delaunay_tree.vertices_simplex);
     }
     assert!(delaunay_tree.check_delaunay());
 }

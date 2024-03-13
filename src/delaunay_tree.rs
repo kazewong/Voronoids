@@ -143,6 +143,7 @@ impl DelaunayTree {
 
     pub fn insert_point(&mut self, update: TreeUpdate) {
         let mut killed_sites = update.killed_sites;
+        self.kdtree.add(&update.vertex, self.vertices.len() as u64);
         killed_sites.sort();
         self.vertices.push(update.vertex);
 
