@@ -391,6 +391,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8afb450f006bf6385ca15ef45d71d2288452bc3683ce2e2cacc0d18e4be60b58"
 
 [[package]]
+name = "plotter"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f02733e028a5da18d6f0ebc3980910a90be7703245c145a5c7527d78a787ac8b"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -659,6 +665,7 @@ dependencies = [
  "nalgebra",
  "ndarray",
  "parry3d-f64",
+ "plotter",
  "rand",
 ]
 
