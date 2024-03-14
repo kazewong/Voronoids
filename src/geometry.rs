@@ -1,3 +1,26 @@
+fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
+    
+    let [x1,y1] = vertices[0];
+    let [x2, y2] = vertices[1];
+    let [x3, y3] = vertices[2];
+
+    let D = [(x1 + x2) / 2.0, (y1 + y2) / 2.0];
+    let E = [(x2 + x3) / 2.0, (y2 + y3) / 2.0];
+
+    let mAB = (y2 - y1) / (x2 - x1);
+    let mBC = (y3 - y2) / (x3 - x2);
+
+    let mD = -1. / mAB;
+    let mE = -1. / mBC;
+
+    let X = (mD * D[0] - mE * E[0] + E[1] - D[1]) / (mD - mE);
+    let Y = mD * (X - D[0]) + D[1];
+
+    let R = ((X - x1)*(X - x1) + (Y - y1)*(Y - y1)).sqrt();
+
+    return ([X, Y], R)
+}
+
 fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
     let a = [
         vertices[1][0] - vertices[0][0],
@@ -53,6 +76,17 @@ fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
 pub fn circumsphere<const N:usize, const M:usize>(vertices: [[f64; N]; M]) -> ([f64; N], f64) {
     let mut center = [0.0; N];
     let mut radius = 0.0;
+    if N == 2{
+        let vertices_2d = [
+            [vertices[0][0], vertices[0][1]],
+            [vertices[1][0], vertices[1][1]],
+            [vertices[2][0], vertices[2][1]],
+            ];
+        let (center_2d, radius_2d) = circumsphere_2d(vertices_2d);
+        for i in 0..N {
+            center[i] = center_2d[i];
+        }
+    }
     if N == 3 {
         let vertices_3d = [
             [vertices[0][0], vertices[0][1], vertices[0][2]],
