@@ -1,6 +1,6 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
-use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
+use voronoids::delaunay_tree::{DelaunayTree3D, TreeUpdate};
 
 #[test]
 fn test_delaunay_tree() {
@@ -10,7 +10,7 @@ fn test_delaunay_tree() {
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0],
     ];
-    let mut delaunay_tree = DelaunayTree::new(vertices.clone());
+    let mut delaunay_tree = DelaunayTree3D::new(vertices.clone());
     assert_eq!(delaunay_tree.max_simplex_id, 4);
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
@@ -24,12 +24,19 @@ fn test_delaunay_tree() {
     // }
     for i in 0..30 {
         println!("{:?}", i);
-        let point = [dist.sample(&mut rng), dist.sample(&mut rng), dist.sample(&mut rng)];
+        let point = [
+            dist.sample(&mut rng),
+            dist.sample(&mut rng),
+            dist.sample(&mut rng),
+        ];
         let update = TreeUpdate::new(point, &delaunay_tree);
         let mut keys = delaunay_tree.simplices.keys().collect::<Vec<_>>();
         keys.sort();
-        for key in  keys{
-            println!("{:?}, {:?}, {:?}", &key, delaunay_tree.simplices[&key], delaunay_tree.neighbors[&key]);
+        for key in keys {
+            println!(
+                "{:?}, {:?}, {:?}",
+                &key, delaunay_tree.simplices[&key], delaunay_tree.neighbors[&key]
+            );
         }
         delaunay_tree.insert_point(update);
         delaunay_tree.check_delaunay();

@@ -5,7 +5,7 @@ use parry3d_f64::bounding_volume::details::point_cloud_bounding_sphere;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct DelaunayTree {
+pub struct DelaunayTree3D {
     pub kdtree: KdTree<f64, 3>,
     pub vertices: Vec<[f64; 3]>,
     pub vertices_simplex: Vec<Vec<usize>>,
@@ -17,7 +17,7 @@ pub struct DelaunayTree {
 }
 
 #[derive(Debug, Clone)]
-pub struct TreeUpdate {
+pub struct TreeUpdate3D {
     vertex: [f64; 3],
     killed_sites: Vec<usize>,
     simplices: Vec<[usize; 4]>,
@@ -28,7 +28,61 @@ pub struct TreeUpdate {
     new_neighbors: Vec<(usize, usize)>,
 }
 
-impl DelaunayTree {
+
+#[derive(Debug, Clone)]
+pub struct DelaunayTree2D {
+    pub kdtree: KdTree<f64, 2>,
+    pub vertices: Vec<[f64; 2]>,
+    pub vertices_simplex: Vec<Vec<usize>>,
+    pub simplices: HashMap<usize, [usize; 3]>,
+    pub centers: HashMap<usize, [f64; 2]>,
+    pub radii: HashMap<usize, f64>,
+    pub neighbors: HashMap<usize, Vec<usize>>,
+    pub max_simplex_id: usize,
+}
+
+
+#[derive(Debug, Clone)]
+pub struct TreeUpdate2D {
+    vertex: [f64; 2],
+    killed_sites: Vec<usize>,
+    simplices: Vec<[usize; 3]>,
+    simplices_id: Vec<usize>,
+    centers: Vec<[f64; 2]>,
+    radii: Vec<f64>,
+    neighbors: Vec<(usize, usize)>,
+    new_neighbors: Vec<(usize, usize)>,
+}
+
+enum DelaunayTree {
+    DelaunayTree2D(DelaunayTree2D),
+    DelaunayTree3D(DelaunayTree3D),
+}
+
+impl DelaunayTree{
+    pub fn new(vertices: Vec<[f64; 2]>) -> Self {
+        DelaunayTree::DelaunayTree2D(DelaunayTree2D::new(vertices))
+    }
+    pub fn new(vertices: Vec<[f64; 3]>) -> Self {
+        DelaunayTree::DelaunayTree3D(DelaunayTree3D::new(vertices))
+    }
+    pub fn check_delaunay(&self) -> bool {
+        match self {
+            DelaunayTree::DelaunayTree2D(tree) => tree.check_delaunay(),
+            DelaunayTree::DelaunayTree3D(tree) => tree.check_delaunay(),
+        }
+    }
+    pub fn insert_point(&mut self, update: TreeUpdate) {
+        match self {
+            DelaunayTree::DelaunayTree2D(tree) => tree.insert_point(update),
+            DelaunayTree::DelaunayTree3D(tree) => tree.insert_point(update),
+        }
+    }
+
+}
+
+
+impl DelaunayTree3D {
     pub fn new(vertices: Vec<[f64; 3]>) -> Self {
         // Turn vertices into nalgebra points
         let points: Vec<Point3<f64>> = vertices
@@ -110,7 +164,7 @@ impl DelaunayTree {
             (3, vec![0]),
             (4, vec![0]),
         ]);
-        let delaunay_tree = DelaunayTree {
+        let delaunay_tree = DelaunayTree3D {
             kdtree,
             vertices,
             vertices_simplex,
@@ -123,7 +177,7 @@ impl DelaunayTree {
         delaunay_tree
     }
 
-    pub fn check_delaunay(&self)-> bool{
+    pub fn check_delaunay(&self) -> bool {
         let mut result = true;
         for (id, simplex) in self.simplices.iter() {
             for (vertex_id, vertex) in self.vertices.iter().enumerate() {
@@ -131,9 +185,8 @@ impl DelaunayTree {
                     *vertex,
                     *self.centers.get(id).unwrap(),
                     *self.radii.get(id).unwrap(),
-                ) && !simplex.contains(&vertex_id) && simplex.iter().all(|&x| {
-                    x > 7
-                })
+                ) && !simplex.contains(&vertex_id)
+                    && simplex.iter().all(|&x| x > 7)
                 {
                     result = false;
                     println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
@@ -155,10 +208,8 @@ impl DelaunayTree {
             self.simplices.insert(current_id, *simplex);
             self.centers.insert(current_id, update.centers[i]);
             self.radii.insert(current_id, update.radii[i]);
-            self.neighbors.insert(
-                current_id,
-                vec![update.neighbors[i].0],
-            );
+            self.neighbors
+                .insert(current_id, vec![update.neighbors[i].0]);
         }
 
         // update neighbor relations
@@ -172,8 +223,11 @@ impl DelaunayTree {
             }
         }
 
-        for (new_neighbor_id1, new_neighbor_id2) in update.new_neighbors.iter(){
-            self.neighbors.get_mut(&(self.max_simplex_id+ *new_neighbor_id1)).unwrap().push(self.max_simplex_id + *new_neighbor_id2);
+        for (new_neighbor_id1, new_neighbor_id2) in update.new_neighbors.iter() {
+            self.neighbors
+                .get_mut(&(self.max_simplex_id + *new_neighbor_id1))
+                .unwrap()
+                .push(self.max_simplex_id + *new_neighbor_id2);
         }
 
         // Update vertices_simplex
@@ -181,12 +235,14 @@ impl DelaunayTree {
         self.vertices_simplex.push(vec![]);
         for i in 0..update.simplices.len() {
             for j in 0..4 {
-                self.vertices_simplex[update.simplices[i][j]].push(self.max_simplex_id + update.simplices_id[i]);
+                self.vertices_simplex[update.simplices[i][j]]
+                    .push(self.max_simplex_id + update.simplices_id[i]);
             }
         }
         for killed_site_id in killed_sites.iter() {
             for i in 0..4 {
-                self.vertices_simplex[self.simplices[killed_site_id][i]].retain(|&x| x != *killed_site_id);
+                self.vertices_simplex[self.simplices[killed_site_id][i]]
+                    .retain(|&x| x != *killed_site_id);
             }
         }
 
@@ -316,7 +372,7 @@ fn pair_simplices(simplices: &Vec<[usize; 4]>, simplices_id: &Vec<usize>) -> Vec
 }
 
 impl TreeUpdate {
-    pub fn new(vertex: [f64; 3], tree: &DelaunayTree) -> Self {
+    pub fn new(vertex: [f64; 3], tree: &DelaunayTree3D) -> Self {
         let killed_sites = tree.locate(vertex);
         let id = tree.vertices.len();
         let mut simplices: Vec<[usize; 4]> = vec![];
