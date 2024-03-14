@@ -1,4 +1,3 @@
-use parry3d_f64::query::point;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use voronoids::geometry::{bounding_sphere, circumsphere};
