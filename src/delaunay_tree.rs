@@ -374,7 +374,7 @@ impl DelaunayTree<2, 3> {
             (3, vec![0]),
             (4, vec![0]),
         ]);
-        let delaunay_tree = DelaunayTree {
+        let delaunay_tree = DelaunayTree::<2,3> {
             kdtree,
             vertices,
             vertices_simplex,
