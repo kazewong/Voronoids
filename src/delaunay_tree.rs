@@ -1,6 +1,6 @@
 use crate::geometry::{circumsphere, in_sphere};
 use kiddo::{KdTree, SquaredEuclidean};
-use nalgebra::Point3;
+use nalgebra::{Point2, Point3};
 use parry3d_f64::bounding_volume::details::point_cloud_bounding_sphere;
 use std::collections::HashMap;
 
@@ -19,25 +19,6 @@ pub struct DelaunayTree<const N: usize, const M: usize> {
 
 
 impl <const N: usize, const M: usize> DelaunayTree<N, M> {
-    pub fn check_delaunay(&self) -> bool {
-        let mut result = true;
-        for (id, simplex) in self.simplices.iter() {
-            for (vertex_id, vertex) in self.vertices.iter().enumerate() {
-                if in_sphere(
-                    *vertex,
-                    *self.centers.get(id).unwrap(),
-                    *self.radii.get(id).unwrap(),
-                ) && !simplex.contains(&vertex_id)
-                    && simplex.iter().all(|&x| x > 7) // TODO fix this
-                {
-                    result = false;
-                    println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
-                }
-            }
-        }
-        result
-    }
-
     fn locate(&self, vertex: [f64; N]) -> Vec<usize> {
         let mut output: Vec<usize> = vec![];
         let simplex_id = &self.vertices_simplex
@@ -290,8 +271,140 @@ impl DelaunayTree<3, 4> {
         delaunay_tree
     }
 
+    pub fn check_delaunay(&self) -> bool {
+        let mut result = true;
+        for (id, simplex) in self.simplices.iter() {
+            for (vertex_id, vertex) in self.vertices.iter().enumerate() {
+                if in_sphere(
+                    *vertex,
+                    *self.centers.get(id).unwrap(),
+                    *self.radii.get(id).unwrap(),
+                ) && !simplex.contains(&vertex_id)
+                    && simplex.iter().all(|&x| x > 7) // TODO fix this
+                {
+                    result = false;
+                    println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
+                }
+            }
+        }
+        result
+    }
 
+}
 
+impl DelaunayTree<2, 3> {
+    pub fn new(vertices: Vec<[f64; 2]>) -> Self {
+        // Turn vertices into nalgebra points
+        let points: Vec<Point2<f64>> = vertices
+            .iter()
+            .map(|v| Point2::new(v[0], v[1]))
+            .collect();
+        let (center, mut radius) = point_cloud_bounding_sphere(&points);
+        radius *= 10.0;
+
+        let first_vertex = [0. + center[0], 0. + center[1], radius + center[2]];
+        let second_vertex = [radius + center[0], 0. + center[1], -radius + center[2]];
+        let third_vertex = [
+            -radius / 2. + center[0],
+            radius * 3f64.sqrt() / 2. + center[1],
+            -radius + center[2],
+        ];
+        let fourth_vertex = [
+            -radius / 2. + center[0],
+            -radius * 3f64.sqrt() / 2. + center[1],
+            -radius + center[2],
+        ];
+        let ghost_vertex = [
+            [0. + center[0], 0. + center[1], radius + center[2]],
+            [0. + center[0], 0. + center[1], radius + center[2]],
+            [0. + center[0], 0. + center[1], radius + center[2]],
+            [radius + center[0], 0. + center[1], -radius + center[2]],
+        ];
+
+        let vertices = vec![
+            first_vertex,
+            second_vertex,
+            third_vertex,
+            fourth_vertex,
+            ghost_vertex[0],
+            ghost_vertex[1],
+            ghost_vertex[2],
+            ghost_vertex[3],
+        ];
+        let mut kdtree = KdTree::new();
+
+        kdtree.add(&first_vertex, 0);
+        kdtree.add(&second_vertex, 1);
+        kdtree.add(&third_vertex, 2);
+        kdtree.add(&fourth_vertex, 3);
+        for (i, vertex) in ghost_vertex.iter().enumerate() {
+            kdtree.add(vertex, (i + 4) as u64);
+        }
+
+        let vertices_simplex = [
+            vec![0, 1, 2, 3],
+            vec![0, 1, 3, 4],
+            vec![0, 1, 2, 4],
+            vec![0, 2, 3, 4],
+            vec![1],
+            vec![2],
+            vec![3],
+            vec![4],
+        ]
+        .to_vec();
+        let simplices = HashMap::from([
+            (0, [0, 1, 2, 3]),
+            (1, [4, 0, 1, 2]),
+            (2, [5, 0, 2, 3]),
+            (3, [6, 0, 3, 1]),
+            (4, [7, 1, 2, 3]),
+        ]);
+        let centers = HashMap::from([
+            (0, center.into()),
+            (1, [0., 0., 0.]),
+            (2, [0., 0., 0.]),
+            (3, [0., 0., 0.]),
+            (4, [0., 0., 0.]),
+        ]);
+        let radii = HashMap::from([(0, radius), (1, 0.), (2, 0.), (3, 0.), (4, 0.)]);
+        let neighbors = HashMap::from([
+            (0, vec![1, 2, 3, 4]),
+            (1, vec![0]),
+            (2, vec![0]),
+            (3, vec![0]),
+            (4, vec![0]),
+        ]);
+        let delaunay_tree = DelaunayTree {
+            kdtree,
+            vertices,
+            vertices_simplex,
+            simplices,
+            centers,
+            radii,
+            neighbors,
+            max_simplex_id: 4,
+        };
+        delaunay_tree
+    }
+
+    pub fn check_delaunay(&self) -> bool {
+        let mut result = true;
+        for (id, simplex) in self.simplices.iter() {
+            for (vertex_id, vertex) in self.vertices.iter().enumerate() {
+                if in_sphere(
+                    *vertex,
+                    *self.centers.get(id).unwrap(),
+                    *self.radii.get(id).unwrap(),
+                ) && !simplex.contains(&vertex_id)
+                    && simplex.iter().all(|&x| x > 7) // TODO fix this
+                {
+                    result = false;
+                    println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
+                }
+            }
+        }
+        result
+    }
 
 }
 

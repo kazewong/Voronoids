@@ -67,8 +67,6 @@ pub fn circumsphere<const N:usize, const M:usize>(vertices: [[f64; N]; M]) -> ([
         radius = radius_3d;
     }
     (center, radius)
-
-
 }
 
 pub fn in_sphere<const N:usize>(vertex: [f64; N], center: [f64; N], radius: f64) -> bool {
