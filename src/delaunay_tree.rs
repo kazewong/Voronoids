@@ -154,12 +154,12 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                         count += 1;
                     }
                 }
-                let (center, radius) = circumsphere([
-                    vertex,
-                    self.vertices[new_simplex[1]],
-                    self.vertices[new_simplex[2]],
-                    self.vertices[new_simplex[3]],
-                ]);
+                let mut new_simplex_vertex: [[f64; N]; M] = [[0.0; N]; M];
+                new_simplex_vertex[0] = vertex.clone();
+                for i in 1..M{
+                    new_simplex_vertex[i] = self.vertices[new_simplex[i]];
+                }
+                let (center, radius) = circumsphere(new_simplex_vertex);
                 simplices.push(new_simplex);
                 simplices_id.push(self.max_simplex_id + simplices.len());
                 centers.push(center);
