@@ -140,7 +140,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
         for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
             let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
-            println!("{:?}", neighbor_id);
             if !in_sphere(
                 vertex,
                 *self.centers.get(neighbor_id).unwrap(),

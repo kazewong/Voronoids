@@ -1,4 +1,3 @@
-use std::process::Output;
 
 fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
     let [x1, y1] = vertices[0];
