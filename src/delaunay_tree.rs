@@ -419,21 +419,18 @@ impl<const N: usize, const M: usize> TreeUpdate<N, M> {
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
-        let mut simplices_counter = 1;
 
         for i in 0..killed_sites.len() {
             let (simplices_, centers_, radii_, neighbors_) =
                 tree.get_new_simplices(killed_sites[i], vertex, id);
-            simplices.extend(simplices_.clone());
+            simplices.extend(simplices_);
             centers.extend(centers_);
             radii.extend(radii_);
             neighbors.extend(neighbors_);
-            simplices_id.extend(
-                (simplices_counter..simplices_counter + simplices_.len()).collect::<Vec<usize>>(),
-            );
-            simplices_counter += simplices_.len();
+            
         }
 
+        simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
         let new_neighbors: Vec<(usize, usize)> = pair_simplices::<N, M>(&simplices, &simplices_id);
 
         TreeUpdate {
