@@ -3,7 +3,6 @@ fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
     let [x1, y1] = vertices[0];
     let [x2, y2] = vertices[1];
     let [x3, y3] = vertices[2];
-    println!("{:?}", vertices);
 
     let D = [(x1 + x2) / 2.0, (y1 + y2) / 2.0];
     let E = [(x2 + x3) / 2.0, (y2 + y3) / 2.0];
