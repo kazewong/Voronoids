@@ -87,6 +87,7 @@ pub fn circumsphere<const N: usize, const M: usize>(vertices: [[f64; N]; M]) -> 
         for i in 0..N {
             center[i] = center_2d[i];
         }
+        radius = radius_2d;
     }
     if N == 3 {
         let vertices_3d = [

@@ -140,6 +140,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
         for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
             let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
+            println!("{:?}", neighbor_id);
             if !in_sphere(
                 vertex,
                 *self.centers.get(neighbor_id).unwrap(),
@@ -291,12 +292,12 @@ impl DelaunayTree<2, 3> {
 
         let first_vertex = [center[0], center[1] + radius];
         let second_vertex = [
-            center[0] + (2. * std::f64::consts::PI / 3.).cos(),
-            center[1] + (2. * std::f64::consts::PI / 3.).sin(),
+            center[0] + radius*(2. * std::f64::consts::PI / 3.).cos(),
+            center[1] + radius*(2. * std::f64::consts::PI / 3.).sin(),
         ];
         let third_vertex = [
-            center[0] + (4. * std::f64::consts::PI / 3.).cos(),
-            center[1] + (4. * std::f64::consts::PI / 3.).sin(),
+            center[0] + radius*(4. * std::f64::consts::PI / 3.).cos(),
+            center[1] + radius*(4. * std::f64::consts::PI / 3.).sin(),
         ];
 
         let vertices = vec![

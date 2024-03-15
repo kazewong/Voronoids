@@ -57,8 +57,9 @@ fn test_delaunay_tree2D() {
 
     for i in 0..4 {
         println!("{:?}", delaunay_tree.simplices);
-        println!("{:?}", delaunay_tree.vertices_simplex);
+        println!("{:?}", delaunay_tree.vertices);
         let update = TreeUpdate::new(vertices[i], &delaunay_tree);
+        println!("{:?}", update);
         delaunay_tree.insert_point(update);
         delaunay_tree.check_delaunay();
     }
