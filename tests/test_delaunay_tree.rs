@@ -98,7 +98,6 @@ fn test_delaunay_tree2D() {
             .map(|[x, y]| Circle::new((*x, *y), 2, RED.filled())),
     );
     for (key, value) in delaunay_tree.simplices.iter() {
-        println!("{:?}, {:?}", key, value);
         if value.iter().all(|x| *x > 5) {
             let _ = scatter_ctx.draw_series(std::iter::once(PathElement::new(
                 vec![

@@ -3,7 +3,6 @@ use kiddo::{KdTree, SquaredEuclidean};
 use nalgebra::{Point2, Point3};
 use std::{collections::HashMap, f32::consts::PI};
 
-
 #[derive(Debug, Clone)]
 pub struct DelaunayTree<const N: usize, const M: usize> {
     // Make sure M = N + 1
@@ -156,7 +155,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 }
                 let mut new_simplex_vertex: [[f64; N]; M] = [[0.0; N]; M];
                 new_simplex_vertex[0] = vertex.clone();
-                for i in 1..M{
+                for i in 1..M {
                     new_simplex_vertex[i] = self.vertices[new_simplex[i]];
                 }
                 let (center, radius) = circumsphere(new_simplex_vertex);
@@ -177,23 +176,23 @@ impl DelaunayTree<3, 4> {
         let (center, mut radius) = bounding_sphere(vertices);
         radius *= 10.0;
 
-        let first_vertex = [0. + center[0], 0. + center[1], radius + center[2]];
-        let second_vertex = [radius + center[0], 0. + center[1], -radius + center[2]];
+        let first_vertex = [center[0], center[1], center[2] + radius];
+        let second_vertex = [center[0] + radius, center[1], center[2] - radius];
         let third_vertex = [
-            -radius / 2. + center[0],
-            radius * 3f64.sqrt() / 2. + center[1],
-            -radius + center[2],
+            center[0] + radius * (2. * std::f64::consts::PI / 3.).cos(),
+            center[1] + radius * (2. * std::f64::consts::PI / 3.).sin(),
+            center[2] - radius,
         ];
         let fourth_vertex = [
-            -radius / 2. + center[0],
-            -radius * 3f64.sqrt() / 2. + center[1],
-            -radius + center[2],
+            center[0] + radius * (4. * std::f64::consts::PI / 3.).cos(),
+            center[1] + radius * (4. * std::f64::consts::PI / 3.).sin(),
+            center[2] - radius,
         ];
         let ghost_vertex = [
             [0. + center[0], 0. + center[1], radius + center[2]],
             [0. + center[0], 0. + center[1], radius + center[2]],
             [0. + center[0], 0. + center[1], radius + center[2]],
-            [radius + center[0], 0. + center[1], -radius + center[2]],
+            [center[0] + radius, center[1], center[2] - radius],
         ];
 
         let vertices = vec![
@@ -291,12 +290,12 @@ impl DelaunayTree<2, 3> {
 
         let first_vertex = [center[0] + radius, center[1]];
         let second_vertex = [
-            center[0] + radius*(2. * std::f64::consts::PI / 3.).cos(),
-            center[1] + radius*(2. * std::f64::consts::PI / 3.).sin(),
+            center[0] + radius * (2. * std::f64::consts::PI / 3.).cos(),
+            center[1] + radius * (2. * std::f64::consts::PI / 3.).sin(),
         ];
         let third_vertex = [
-            center[0] + radius*(4. * std::f64::consts::PI / 3.).cos(),
-            center[1] + radius*(4. * std::f64::consts::PI / 3.).sin(),
+            center[0] + radius * (4. * std::f64::consts::PI / 3.).cos(),
+            center[1] + radius * (4. * std::f64::consts::PI / 3.).sin(),
         ];
 
         let vertices = vec![
@@ -310,7 +309,7 @@ impl DelaunayTree<2, 3> {
         println!("{:?}", vertices);
         let mut kdtree = KdTree::new();
 
-        for i in 0..6{
+        for i in 0..6 {
             kdtree.add(&vertices[i], i as u64);
         }
 
@@ -337,12 +336,8 @@ impl DelaunayTree<2, 3> {
             (4, [0., 0.]),
         ]);
         let radii = HashMap::from([(0, radius), (1, 0.), (2, 0.), (3, 0.), (4, 0.)]);
-        let neighbors = HashMap::from([
-            (0, vec![1, 2, 3]),
-            (1, vec![0]),
-            (2, vec![0]),
-            (3, vec![0]),
-        ]);
+        let neighbors =
+            HashMap::from([(0, vec![1, 2, 3]), (1, vec![0]), (2, vec![0]), (3, vec![0])]);
         let delaunay_tree = DelaunayTree::<2, 3> {
             kdtree,
             vertices,
