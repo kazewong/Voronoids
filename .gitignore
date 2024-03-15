@@ -27,3 +27,4 @@ Manifest.toml
 # Added by cargo
 
 /target
+test.png
