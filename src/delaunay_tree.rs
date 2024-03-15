@@ -3,6 +3,7 @@ use kiddo::{KdTree, SquaredEuclidean};
 use nalgebra::{Point2, Point3};
 use std::{collections::HashMap, f32::consts::PI};
 
+
 #[derive(Debug, Clone)]
 pub struct DelaunayTree<const N: usize, const M: usize> {
     // Make sure M = N + 1
@@ -137,7 +138,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
         let killed_site: [usize; M] = *self.simplices.get(&killed_site_id).unwrap();
-
         for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
             let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
             if !in_sphere(
@@ -289,7 +289,7 @@ impl DelaunayTree<2, 3> {
         let (center, mut radius) = bounding_sphere(vertices);
         radius *= 10.0;
 
-        let first_vertex = [center[0], center[1] + radius];
+        let first_vertex = [center[0] + radius, center[1]];
         let second_vertex = [
             center[0] + radius*(2. * std::f64::consts::PI / 3.).cos(),
             center[1] + radius*(2. * std::f64::consts::PI / 3.).sin(),
@@ -307,6 +307,7 @@ impl DelaunayTree<2, 3> {
             second_vertex.clone(),
             third_vertex.clone(),
         ];
+        println!("{:?}", vertices);
         let mut kdtree = KdTree::new();
 
         for i in 0..6{
