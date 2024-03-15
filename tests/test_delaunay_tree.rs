@@ -56,9 +56,9 @@ fn test_delaunay_tree2D() {
     let mut scatter_ctx = ChartBuilder::on(&areas[2])
         .x_label_area_size(40)
         .y_label_area_size(40)
-        .build_cartesian_2d(-0f64..2f64, -0f64..2f64)
+        .build_cartesian_2d(-0.2f64..1.2f64, -0.2f64..1.2f64)
         .unwrap();
-    scatter_ctx
+    let _ = scatter_ctx
         .configure_mesh()
         .disable_x_mesh()
         .disable_y_mesh()
@@ -83,14 +83,15 @@ fn test_delaunay_tree2D() {
     //     root.present();
     //     delaunay_tree.check_delaunay();
     // }
-    for i in 0..3 {
+    for i in 0..100 {
         let point = [dist.sample(&mut rng), dist.sample(&mut rng)];
         let update = TreeUpdate::new(point, &delaunay_tree);
         delaunay_tree.insert_point(update);
-        // delaunay_tree.check_delaunay();
     }
 
-    scatter_ctx.draw_series(
+    delaunay_tree.check_delaunay();
+
+    let _ = scatter_ctx.draw_series(
         delaunay_tree
             .vertices
             .iter()
@@ -98,8 +99,8 @@ fn test_delaunay_tree2D() {
     );
     for (key, value) in delaunay_tree.simplices.iter() {
         println!("{:?}, {:?}", key, value);
-        if value.iter().all(|x| *x >5){
-            scatter_ctx.draw_series(std::iter::once(PathElement::new(
+        if value.iter().all(|x| *x > 5) {
+            let _ = scatter_ctx.draw_series(std::iter::once(PathElement::new(
                 vec![
                     (
                         delaunay_tree.vertices[value[0]][0],
@@ -123,19 +124,17 @@ fn test_delaunay_tree2D() {
                     filled: true,
                     stroke_width: 1,
                 },
-            )));    
+            )));
+            // scatter_ctx.draw_series(std::iter::once(Circle::new(
+            //     (delaunay_tree.centers[key][0], delaunay_tree.centers[key][1]),
+            //     delaunay_tree.radii[key],
+            //     ShapeStyle {
+            //         color: RED.mix(0.5),
+            //         filled: true,
+            //         stroke_width: 1,
+            //     },
+            // )));
         }
     }
-    // scatter_ctx.draw_series(delaunay_tree.simplices.map(|([a, b, c], _)| {
-    //     Polygon::new(
-    //         vec![
-    //             (delaunay_tree.vertices[*a][0], delaunay_tree.vertices[*a][1]),
-    //             (delaunay_tree.vertices[*b][0], delaunay_tree.vertices[*b][1]),
-    //             (delaunay_tree.vertices[*c][0], delaunay_tree.vertices[*c][1]),
-    //             (delaunay_tree.vertices[*a][0], delaunay_tree.vertices[*a][1]),
-    //         ],
-    //         BLUE.filled(),
-    //     )
-    // }));
-    // println!("{:?}", delaunay_tree);
+
 }
