@@ -28,7 +28,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 *self.radii.get(id).unwrap(),
             ) {
                 output.push(*id);
-                output = self.clone().find_all_neighbors(&mut output, *id, vertex);
+                output = self.find_all_neighbors(&mut output, *id, vertex);
             }
         }
         output.sort();
@@ -37,7 +37,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     fn find_all_neighbors(
-        self,
+        &self,
         output: &mut Vec<usize>,
         node_id: usize,
         vertex: [f64; N],
@@ -52,7 +52,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 )
             {
                 output.push(*neighbor);
-                self.clone().find_all_neighbors(output, *neighbor, vertex);
+                self.find_all_neighbors(output, *neighbor, vertex);
             }
         }
         output.to_vec()
