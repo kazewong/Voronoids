@@ -37,4 +37,5 @@ pub fn find_placement(queue: Vec<(usize, [f64; 3], Vec<usize>)>) {
             }
         }
     });
+    
 }
