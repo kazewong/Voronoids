@@ -1,6 +1,7 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
+use voronoids::scheduler::find_placement;
 
 #[test]
 fn test_queuing() {
@@ -22,5 +23,5 @@ fn test_queuing() {
     }
 
     let queue = voronoids::scheduler::make_queue(vertices, delaunay_tree);
-    println!("{:?}", queue)
+    find_placement(queue);
 }
