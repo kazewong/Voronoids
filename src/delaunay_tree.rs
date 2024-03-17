@@ -17,7 +17,7 @@ pub struct DelaunayTree<const N: usize, const M: usize> {
 }
 
 impl<const N: usize, const M: usize> DelaunayTree<N, M> {
-    fn locate(&self, vertex: [f64; N]) -> Vec<usize> {
+    pub fn locate(&self, vertex: [f64; N]) -> Vec<usize> {
         let mut output: Vec<usize> = vec![];
         let simplex_id = &self.vertices_simplex
             [self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize];

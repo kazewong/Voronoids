@@ -1,9 +1,7 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
-
-const OUT_FILE_NAME: &str = "./test.png";
 
 #[test]
 fn test_delaunay_tree_3d() {
@@ -36,7 +34,7 @@ fn test_delaunay_tree_2d() {
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
 
-    for i in 0..1000 {
+    for _ in 0..1000 {
         let start = Instant::now();
         let point = [dist.sample(&mut rng), dist.sample(&mut rng)];
         let update = TreeUpdate::new(point, &delaunay_tree);
