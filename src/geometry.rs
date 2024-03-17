@@ -1,4 +1,4 @@
-
+use nalgebra::Matrix4;
 fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
     let [x1, y1] = vertices[0];
     let [x2, y2] = vertices[1];
@@ -22,55 +22,114 @@ fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
 }
 
 fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
-    let a = [
-        vertices[1][0] - vertices[0][0],
-        vertices[1][1] - vertices[0][1],
-        vertices[1][2] - vertices[0][2],
-    ];
-    let b = [
-        vertices[2][0] - vertices[0][0],
-        vertices[2][1] - vertices[0][1],
-        vertices[2][2] - vertices[0][2],
-    ];
-    let c = [
-        vertices[3][0] - vertices[0][0],
-        vertices[3][1] - vertices[0][1],
-        vertices[3][2] - vertices[0][2],
-    ];
+    if vertices[0] == vertices[1]
+        || vertices[0] == vertices[2]
+        || vertices[0] == vertices[3]
+        || vertices[1] == vertices[2]
+        || vertices[1] == vertices[3]
+        || vertices[2] == vertices[3]
+    {
+        ([0.0, 0.0, 0.0], 0.0)
+    } else {
+        let length_column = [
+            vertices[0][0] * vertices[0][0]
+                + vertices[0][1] * vertices[0][1]
+                + vertices[0][2] * vertices[0][2],
+            vertices[1][0] * vertices[1][0]
+                + vertices[1][1] * vertices[1][1]
+                + vertices[1][2] * vertices[1][2],
+            vertices[2][0] * vertices[2][0]
+                + vertices[2][1] * vertices[2][1]
+                + vertices[2][2] * vertices[2][2],
+            vertices[3][0] * vertices[3][0]
+                + vertices[3][1] * vertices[3][1]
+                + vertices[3][2] * vertices[3][2],
+        ];
 
-    let length_a = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
-    let length_b = b[0] * b[0] + b[1] * b[1] + b[2] * b[2];
-    let length_c = c[0] * c[0] + c[1] * c[1] + c[2] * c[2];
+        let a = Matrix4::new(
+            vertices[0][0],
+            vertices[0][1],
+            vertices[0][2],
+            1.0,
+            vertices[1][0],
+            vertices[1][1],
+            vertices[1][2],
+            1.0,
+            vertices[2][0],
+            vertices[2][1],
+            vertices[2][2],
+            1.0,
+            vertices[3][0],
+            vertices[3][1],
+            vertices[3][2],
+            1.0,
+        ).determinant();
 
-    let a_cross_b = [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ];
-    let b_cross_c = [
-        b[1] * c[2] - b[2] * c[1],
-        b[2] * c[0] - b[0] * c[2],
-        b[0] * c[1] - b[1] * c[0],
-    ];
-    let c_cross_a = [
-        c[1] * a[2] - c[2] * a[1],
-        c[2] * a[0] - c[0] * a[2],
-        c[0] * a[1] - c[1] * a[0],
-    ];
+        let Dx = Matrix4::new(
+            length_column[0],
+            vertices[0][1],
+            vertices[0][2],
+            1.0,
+            length_column[1],
+            vertices[1][1],
+            vertices[1][2],
+            1.0,
+            length_column[2],
+            vertices[2][1],
+            vertices[2][2],
+            1.0,
+            length_column[3],
+            vertices[3][1],
+            vertices[3][2],
+            1.0,
+        ).determinant();
 
-    let denominator = 0.5 / (a[0] * b_cross_c[0] + a[1] * b_cross_c[1] + a[2] * b_cross_c[2]);
+        let Dy = - Matrix4::new(
+            length_column[0],
+            vertices[0][0],
+            vertices[0][2],
+            1.0,
+            length_column[1],
+            vertices[1][0],
+            vertices[1][2],
+            1.0,
+            length_column[2],
+            vertices[2][0],
+            vertices[2][2],
+            1.0,
+            length_column[3],
+            vertices[3][0],
+            vertices[3][2],
+            1.0,
+        ).determinant();
 
-    let center = [
-        (length_a * b_cross_c[0] + length_b * c_cross_a[0] + length_c * a_cross_b[0]) * denominator,
-        (length_a * b_cross_c[1] + length_b * c_cross_a[1] + length_c * a_cross_b[1]) * denominator,
-        (length_a * b_cross_c[2] + length_b * c_cross_a[2] + length_c * a_cross_b[2]) * denominator,
-    ];
+        let Dz = Matrix4::new(
+            length_column[0],
+            vertices[0][0],
+            vertices[0][1],
+            1.0,
+            length_column[1],
+            vertices[1][0],
+            vertices[1][1],
+            1.0,
+            length_column[2],
+            vertices[2][0],
+            vertices[2][1],
+            1.0,
+            length_column[3],
+            vertices[3][0],
+            vertices[3][1],
+            1.0,
+        ).determinant();
 
-    let radius = (center[0] - vertices[0][0]) * (center[0] - vertices[0][0])
-        + (center[1] - vertices[0][1]) * (center[1] - vertices[0][1])
-        + (center[2] - vertices[0][2]) * (center[2] - vertices[0][2]);
 
-    (center, radius.sqrt())
+        let center = [Dx/2.0/a, Dy/2.0/a, Dz/2.0/a];
+        let radius = ((vertices[0][0] - center[0]) * (vertices[0][0] - center[0])
+            + (vertices[0][1] - center[1]) * (vertices[0][1] - center[1])
+            + (vertices[0][2] - center[2]) * (vertices[0][2] - center[2]))
+            .sqrt();
+        (center, radius)
+    }
 }
 
 pub fn circumsphere<const N: usize, const M: usize>(vertices: [[f64; N]; M]) -> ([f64; N], f64) {
@@ -122,20 +181,36 @@ pub fn bounding_sphere<const N: usize>(vertices: Vec<[f64; N]>) -> ([f64; N], f6
     let mut radius: f64 = 0.0;
     for i in 0..N {
         lower_corner[i] = vertices.iter().map(|x| x[i]).fold(f64::INFINITY, f64::min);
-        upper_corner[i] = vertices.iter().map(|x| x[i]).fold(f64::NEG_INFINITY, f64::max);
-        center[i] = (upper_corner[i] + lower_corner[i])/2.0;
+        upper_corner[i] = vertices
+            .iter()
+            .map(|x| x[i])
+            .fold(f64::NEG_INFINITY, f64::max);
+        center[i] = (upper_corner[i] + lower_corner[i]) / 2.0;
     }
-    let upper_distance = upper_corner.iter().zip(center.iter()).map(|(x, y)| (x - y)*(x - y)).sum::<f64>().sqrt();
-    let lower_distance = lower_corner.iter().zip(center.iter()).map(|(x, y)| (x - y)*(x - y)).sum::<f64>().sqrt();
-    radius = if upper_distance > lower_distance {upper_distance} else {lower_distance};
+    let upper_distance = upper_corner
+        .iter()
+        .zip(center.iter())
+        .map(|(x, y)| (x - y) * (x - y))
+        .sum::<f64>()
+        .sqrt();
+    let lower_distance = lower_corner
+        .iter()
+        .zip(center.iter())
+        .map(|(x, y)| (x - y) * (x - y))
+        .sum::<f64>()
+        .sqrt();
+    radius = if upper_distance > lower_distance {
+        upper_distance
+    } else {
+        lower_distance
+    };
     // Check if all points are inside the sphere.
     for (id, point) in vertices.iter().enumerate() {
-        if inside[id] == false{
+        if inside[id] == false {
             if in_sphere(*point, center, radius) {
                 inside[id] = true;
-            }
-            else {
-                radius = radius *1.5;
+            } else {
+                radius = radius * 1.5;
             }
         }
     }

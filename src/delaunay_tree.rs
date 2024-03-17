@@ -275,6 +275,12 @@ impl DelaunayTree<3, 4> {
                 {
                     result = false;
                     println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
+                    println!("Vertices coordinates {:?}", vertex);
+                    for i in 0..4{
+                        println!("Simplex vertices {:?}", self.vertices[simplex[i]]);
+                    }
+                    println!("Center of simplex {:?}", self.centers.get(id).unwrap());
+                    println!("Radius of simplex {:?}", self.radii.get(id).unwrap());
                 }
             }
         }

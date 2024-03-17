@@ -4,8 +4,8 @@ use voronoids::geometry::{bounding_sphere, circumsphere};
 #[test]
 fn test_circumsphere() {
     let vertices = [
-        [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0],
     ];
