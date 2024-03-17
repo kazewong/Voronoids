@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 use nalgebra::zero;
+=======
+>>>>>>> 3a7f414 (Refactor make_queue function in scheduler.rs)
 use rayon::prelude::*;
 use std::{collections::HashMap, hash::Hash};
 
@@ -18,11 +21,14 @@ pub fn make_queue<const N: usize, const M: usize>(
                 .map(|site| tree.neighbors.get(&site).unwrap().clone())
                 .flatten()
                 .collect();
+<<<<<<< HEAD
             neighbors = neighbors
                 .into_iter()
                 .map(|site| tree.neighbors.get(&site).unwrap().clone())
                 .flatten()
                 .collect();
+=======
+>>>>>>> 3a7f414 (Refactor make_queue function in scheduler.rs)
             neighbors.sort();
             neighbors.dedup();
             (id, vertex, neighbors)
@@ -30,7 +36,11 @@ pub fn make_queue<const N: usize, const M: usize>(
         .collect()
 }
 
+<<<<<<< HEAD
 pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>) -> Vec<usize> {
+=======
+pub fn find_placement(queue: Vec<(usize, [f64; 3], Vec<usize>)>) {
+>>>>>>> 3a7f414 (Refactor make_queue function in scheduler.rs)
     //-> Vec<usize>{
     let mut occupancy: HashMap<usize, Vec<usize>> = HashMap::new();
     queue
@@ -62,7 +72,11 @@ pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>)
             }
             max_distance = std::cmp::max(max_distance, current_distance);
         }
+<<<<<<< HEAD
         placement.push(max_distance);
     }
     placement
+=======
+    });
+>>>>>>> 3a7f414 (Refactor make_queue function in scheduler.rs)
 }
