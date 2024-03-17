@@ -11,7 +11,7 @@ fn test_delaunay_tree3D() {
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
-    for _ in 0..10 {
+    for _ in 0..1000 {
         let point = [
             dist.sample(&mut rng),
             dist.sample(&mut rng),
@@ -23,10 +23,9 @@ fn test_delaunay_tree3D() {
     assert_eq!(delaunay_tree.max_simplex_id, 4);
 
 
-    for i in 0..10 {
+    for i in 0..1000 {
         let update = TreeUpdate::new(vertices[i], &delaunay_tree);
         delaunay_tree.insert_point(update);
-        delaunay_tree.check_delaunay();
         // println!("{:?}", delaunay_tree.vertices);
         // let mut keys = delaunay_tree.simplices.keys().collect::<Vec<_>>();
         // keys.sort();
@@ -38,6 +37,8 @@ fn test_delaunay_tree3D() {
         // }
 
     }
+    delaunay_tree.check_delaunay();
+
     // let root: DrawingArea<BitMapBackend<'_>, plotters::coord::Shift> = BitMapBackend::gif("test.gif", (1024, 768),500).unwrap().into_drawing_area();
     // for i in 1..10 {
     //     root.fill(&WHITE);
