@@ -171,6 +171,21 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
     pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
         let queue = make_queue(vertices, self);
+        let placement = find_placement(&queue);
+        for i in 1..placement.iter().max().unwrap() + 1 {
+            let valid_batch = queue
+                .iter()
+                .enumerate()
+                .filter(|(id, _)| placement[*id] == i)
+                .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
+            let updates = valid_batch
+                .iter()
+                .map(|(_, vertex)| TreeUpdate::new(vertex.1, self))
+                .collect::<Vec<TreeUpdate<N, M>>>();
+            for update in updates {
+                self.insert_point(update);
+            }
+        }
     }
 
 }

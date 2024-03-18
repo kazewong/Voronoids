@@ -30,7 +30,7 @@ pub fn make_queue<const N: usize, const M: usize>(
         .collect()
 }
 
-pub fn find_placement(queue: Vec<(usize, [f64; 3], Vec<usize>)>) -> Vec<usize> {
+pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>) -> Vec<usize> {
     //-> Vec<usize>{
     let mut occupancy: HashMap<usize, Vec<usize>> = HashMap::new();
     queue
