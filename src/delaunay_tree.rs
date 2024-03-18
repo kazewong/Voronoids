@@ -184,9 +184,9 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 .par_iter()
                 .map(|(id, vertex)| TreeUpdate::new(vertex.1, self))
                 .collect::<Vec<TreeUpdate<N, M>>>();
-            // for update in updates {
-            //     self.insert_point(update);
-            // }
+            for update in updates {
+                self.insert_point(update);
+            }
         }
     }
 

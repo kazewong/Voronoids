@@ -1,12 +1,11 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
-use voronoids::scheduler::find_placement;
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 fn main() {
-    const N_POINTS: usize = 10000;
-    const N_TEST_POINTS: usize = 100000;
+    const N_POINTS: usize = 1000;
+    const N_TEST_POINTS: usize = 10000;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
