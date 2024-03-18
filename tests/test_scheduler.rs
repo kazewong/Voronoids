@@ -30,7 +30,7 @@ fn test_queuing() {
         delaunay_tree.insert_point(update);
     }
 
-    let queue = voronoids::scheduler::make_queue(vertices2, delaunay_tree);
+    let queue = voronoids::scheduler::make_queue(vertices2, &delaunay_tree);
     let placement = find_placement(queue);
     println!("{:?}", placement);
 }

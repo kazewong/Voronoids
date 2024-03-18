@@ -1,7 +1,7 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
+use crate::scheduler::{find_placement, make_queue};
 use kiddo::{KdTree, SquaredEuclidean};
-use nalgebra::{Point2, Point3};
-use std::{collections::HashMap, f32::consts::PI};
+use std::{collections::HashMap};
 
 #[derive(Debug, Clone)]
 pub struct DelaunayTree<const N: usize, const M: usize> {
@@ -56,6 +56,56 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             }
         }
         output.to_vec()
+    }
+
+    pub fn get_new_simplices(
+        &self,
+        killed_site_id: usize,
+        vertex: [f64; N],
+        vertex_id: usize,
+    ) -> (
+        Vec<[usize; M]>,
+        Vec<[f64; N]>,
+        Vec<f64>,
+        Vec<(usize, usize)>,
+    ) {
+        let mut simplices: Vec<[usize; M]> = vec![];
+        let mut simplices_id: Vec<usize> = vec![];
+        let mut centers: Vec<[f64; N]> = vec![];
+        let mut radii: Vec<f64> = vec![];
+        let mut neighbors: Vec<(usize, usize)> = vec![];
+
+        let killed_site: [usize; M] = *self.simplices.get(&killed_site_id).unwrap();
+        for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
+            let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
+            if !in_sphere(
+                vertex,
+                *self.centers.get(neighbor_id).unwrap(),
+                *self.radii.get(neighbor_id).unwrap(),
+            ) {
+                let mut new_simplex = [0; M];
+                new_simplex[0] = vertex_id;
+                let mut count = 1;
+                for i in 0..M {
+                    if killed_site.contains(&neighbor_simplex[i]) {
+                        new_simplex[count] = neighbor_simplex[i];
+                        count += 1;
+                    }
+                }
+                let mut new_simplex_vertex: [[f64; N]; M] = [[0.0; N]; M];
+                new_simplex_vertex[0] = vertex.clone();
+                for i in 1..M {
+                    new_simplex_vertex[i] = self.vertices[new_simplex[i]];
+                }
+                let (center, radius) = circumsphere(new_simplex_vertex);
+                simplices.push(new_simplex);
+                simplices_id.push(self.max_simplex_id + simplices.len());
+                centers.push(center);
+                radii.push(radius);
+                neighbors.push((*neighbor_id, killed_site_id));
+            }
+        }
+        (simplices, centers, radii, neighbors)
     }
 
     pub fn insert_point(&mut self, update: TreeUpdate<N, M>) {
@@ -119,55 +169,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         self.max_simplex_id += update.simplices.len();
     }
 
-    pub fn get_new_simplices(
-        &self,
-        killed_site_id: usize,
-        vertex: [f64; N],
-        vertex_id: usize,
-    ) -> (
-        Vec<[usize; M]>,
-        Vec<[f64; N]>,
-        Vec<f64>,
-        Vec<(usize, usize)>,
-    ) {
-        let mut simplices: Vec<[usize; M]> = vec![];
-        let mut simplices_id: Vec<usize> = vec![];
-        let mut centers: Vec<[f64; N]> = vec![];
-        let mut radii: Vec<f64> = vec![];
-        let mut neighbors: Vec<(usize, usize)> = vec![];
-
-        let killed_site: [usize; M] = *self.simplices.get(&killed_site_id).unwrap();
-        for neighbor_id in self.neighbors.get(&killed_site_id).unwrap() {
-            let neighbor_simplex = *self.simplices.get(neighbor_id).unwrap();
-            if !in_sphere(
-                vertex,
-                *self.centers.get(neighbor_id).unwrap(),
-                *self.radii.get(neighbor_id).unwrap(),
-            ) {
-                let mut new_simplex = [0; M];
-                new_simplex[0] = vertex_id;
-                let mut count = 1;
-                for i in 0..M {
-                    if killed_site.contains(&neighbor_simplex[i]) {
-                        new_simplex[count] = neighbor_simplex[i];
-                        count += 1;
-                    }
-                }
-                let mut new_simplex_vertex: [[f64; N]; M] = [[0.0; N]; M];
-                new_simplex_vertex[0] = vertex.clone();
-                for i in 1..M {
-                    new_simplex_vertex[i] = self.vertices[new_simplex[i]];
-                }
-                let (center, radius) = circumsphere(new_simplex_vertex);
-                simplices.push(new_simplex);
-                simplices_id.push(self.max_simplex_id + simplices.len());
-                centers.push(center);
-                radii.push(radius);
-                neighbors.push((*neighbor_id, killed_site_id));
-            }
-        }
-        (simplices, centers, radii, neighbors)
+    pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
+        let queue = make_queue(vertices, self);
     }
+
 }
 
 impl DelaunayTree<3, 4> {

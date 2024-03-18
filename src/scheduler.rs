@@ -6,7 +6,7 @@ use crate::delaunay_tree::DelaunayTree;
 
 pub fn make_queue<const N: usize, const M: usize>(
     vertices: Vec<[f64; N]>,
-    tree: DelaunayTree<N, M>,
+    tree: &DelaunayTree<N, M>,
 ) -> Vec<(usize, [f64; N], Vec<usize>)> {
     vertices
         .into_par_iter()
