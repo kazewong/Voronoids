@@ -31,6 +31,10 @@ fn test_queuing() {
     }
 
     let queue = voronoids::scheduler::make_queue(vertices2, &delaunay_tree);
+<<<<<<< HEAD
     let placement = find_placement(&queue);
+=======
+    let placement = find_placement(queue);
+>>>>>>> d98f7fc (make_queue should use reference)
     println!("{:?}", placement);
 }
