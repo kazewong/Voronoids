@@ -1,6 +1,7 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
 use kiddo::{KdTree, SquaredEuclidean};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::{collections::HashMap};
 
 #[derive(Debug, Clone)]
@@ -172,6 +173,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
         let queue = make_queue(vertices, self);
         let placement = find_placement(&queue);
+        println!("Starting inserting points");
         for i in 1..placement.iter().max().unwrap() + 1 {
             let valid_batch = queue
                 .iter()
@@ -179,12 +181,12 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 .filter(|(id, _)| placement[*id] == i)
                 .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
             let updates = valid_batch
-                .iter()
-                .map(|(_, vertex)| TreeUpdate::new(vertex.1, self))
+                .par_iter()
+                .map(|(id, vertex)| TreeUpdate::new(vertex.1, self))
                 .collect::<Vec<TreeUpdate<N, M>>>();
-            for update in updates {
-                self.insert_point(update);
-            }
+            // for update in updates {
+            //     self.insert_point(update);
+            // }
         }
     }
 
