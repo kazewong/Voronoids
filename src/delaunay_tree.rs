@@ -1,7 +1,7 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
 use kiddo::{KdTree, SquaredEuclidean};
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::{collections::HashMap};
 
 #[derive(Debug, Clone)]
@@ -31,6 +31,12 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 output.push(*id);
                 output = self.find_all_neighbors(&mut output, *id, vertex);
             }
+        }
+        if output.len() == 0 {
+            println!("{:?}", self.vertices_simplex);
+            println!("Simplex_id {:?}", simplex_id);
+            println!("{:?}", self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize);
+            panic!("No simplex found for vertex {:?}", vertex);
         }
         output.sort();
         output.dedup();
@@ -173,8 +179,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
         let queue = make_queue(vertices, self);
         let placement = find_placement(&queue);
-        println!("Starting inserting points");
+        println!("Starting insertion");
+        let time = std::time::Instant::now();
         for i in 1..placement.iter().max().unwrap() + 1 {
+            let n_points = self.vertices.len();
             let valid_batch = queue
                 .iter()
                 .enumerate()
@@ -182,12 +190,14 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
             let updates = valid_batch
                 .par_iter()
-                .map(|(id, vertex)| TreeUpdate::new(vertex.1, self))
+                .enumerate()
+                .map(|(id, vertex)| TreeUpdate::new(n_points+id, vertex.1.1, self))
                 .collect::<Vec<TreeUpdate<N, M>>>();
             for update in updates {
                 self.insert_point(update);
             }
         }
+        println!("Insertion finished in {:?}", time.elapsed());
     }
 
 }
@@ -438,9 +448,8 @@ pub struct TreeUpdate<const N: usize, const M: usize> {
 }
 
 impl<const N: usize, const M: usize> TreeUpdate<N, M> {
-    pub fn new(vertex: [f64; N], tree: &DelaunayTree<N, M>) -> Self {
+    pub fn new(id:usize, vertex: [f64; N], tree: &DelaunayTree<N, M>) -> Self {
         let killed_sites = tree.locate(vertex);
-        let id = tree.vertices.len();
         let mut simplices: Vec<[usize; M]> = vec![];
         let mut simplices_id: Vec<usize> = vec![];
         let mut centers: Vec<[f64; N]> = vec![];
