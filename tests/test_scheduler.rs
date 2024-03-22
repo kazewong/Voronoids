@@ -26,15 +26,11 @@ fn test_queuing() {
     }
     let mut delaunay_tree = DelaunayTree::<3, 4>::new(vertices.clone());
     for i in 0..N_POINTS {
-        let update = TreeUpdate::new(vertices[i], &delaunay_tree);
+        let update = TreeUpdate::new(i, vertices[i], &delaunay_tree);
         delaunay_tree.insert_point(update);
     }
 
     let queue = voronoids::scheduler::make_queue(vertices2, &delaunay_tree);
-<<<<<<< HEAD
     let placement = find_placement(&queue);
-=======
-    let placement = find_placement(queue);
->>>>>>> d98f7fc (make_queue should use reference)
     println!("{:?}", placement);
 }
