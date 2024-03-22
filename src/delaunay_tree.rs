@@ -1,10 +1,7 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
 use kiddo::{KdTree, SquaredEuclidean};
-<<<<<<< HEAD
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-=======
->>>>>>> d98f7fc (make_queue should use reference)
 use std::{collections::HashMap};
 
 #[derive(Debug, Clone)]
@@ -181,7 +178,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
     pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
         let queue = make_queue(vertices, self);
-<<<<<<< HEAD
         let placement = find_placement(&queue);
         println!("Starting insertion");
         let time = std::time::Instant::now();
@@ -202,8 +198,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             }
         }
         println!("Insertion finished in {:?}", time.elapsed());
-=======
->>>>>>> d98f7fc (make_queue should use reference)
     }
 
 }
