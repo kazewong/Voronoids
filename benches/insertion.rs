@@ -4,7 +4,7 @@ use rand::{distributions::{Distribution, Uniform}, rngs::StdRng, SeedableRng};
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
 
 fn benchmark_locate(c: &mut Criterion){
-    const N_POINTS: usize = 10000;
+    const N_POINTS: usize = 1000;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
