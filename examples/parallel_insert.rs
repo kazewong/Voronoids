@@ -1,7 +1,7 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
-use std::time::{Instant};
+use std::time::Instant;
 
 fn main() {
     const N_POINTS: usize = 10000;
