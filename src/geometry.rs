@@ -198,7 +198,7 @@ pub fn bounding_sphere<const N: usize>(vertices: Vec<[f64; N]>) -> ([f64; N], f6
         .map(|(x, y)| (x - y) * (x - y))
         .sum::<f64>()
         .sqrt();
-    let radius = if upper_distance > lower_distance {
+    let mut radius = if upper_distance > lower_distance {
         upper_distance
     } else {
         lower_distance
