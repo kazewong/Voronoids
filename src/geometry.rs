@@ -178,7 +178,6 @@ pub fn bounding_sphere<const N: usize>(vertices: Vec<[f64; N]>) -> ([f64; N], f6
     let mut lower_corner: [f64; N] = [0.0; N];
     let mut upper_corner: [f64; N] = [0.0; N];
     let mut center: [f64; N] = [0.0; N];
-    let mut : f64 = 0.0;
     for i in 0..N {
         lower_corner[i] = vertices.iter().map(|x| x[i]).fold(f64::INFINITY, f64::min);
         upper_corner[i] = vertices
