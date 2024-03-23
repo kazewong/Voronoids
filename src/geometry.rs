@@ -4,21 +4,21 @@ fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
     let [x2, y2] = vertices[1];
     let [x3, y3] = vertices[2];
 
-    let D = [(x1 + x2) / 2.0, (y1 + y2) / 2.0];
-    let E = [(x2 + x3) / 2.0, (y2 + y3) / 2.0];
+    let d = [(x1 + x2) / 2.0, (y1 + y2) / 2.0];
+    let e = [(x2 + x3) / 2.0, (y2 + y3) / 2.0];
 
-    let mAB = (y2 - y1) / (x2 - x1);
-    let mBC = (y3 - y2) / (x3 - x2);
+    let m_ab = (y2 - y1) / (x2 - x1);
+    let m_bc = (y3 - y2) / (x3 - x2);
 
-    let mD = -1. / mAB;
-    let mE = -1. / mBC;
+    let m_d = -1. / m_ab;
+    let m_e = -1. / m_bc;
 
-    let X = (mD * D[0] - mE * E[0] + E[1] - D[1]) / (mD - mE);
-    let Y = mD * (X - D[0]) + D[1];
+    let x = (m_d * d[0] - m_e * e[0] + e[1] - d[1]) / (m_d - m_e);
+    let y = m_d * (x - d[0]) + d[1];
 
-    let R = ((X - x1) * (X - x1) + (Y - y1) * (Y - y1)).sqrt();
+    let r = ((x - x1) * (x - x1) + (y - y1) * (y - y1)).sqrt();
 
-    return ([X, Y], R);
+    return ([x, y], r);
 }
 
 fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
@@ -65,7 +65,7 @@ fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
             1.0,
         ).determinant();
 
-        let Dx = Matrix4::new(
+        let dx = Matrix4::new(
             length_column[0],
             vertices[0][1],
             vertices[0][2],
@@ -84,7 +84,7 @@ fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
             1.0,
         ).determinant();
 
-        let Dy = - Matrix4::new(
+        let dy = - Matrix4::new(
             length_column[0],
             vertices[0][0],
             vertices[0][2],
@@ -103,7 +103,7 @@ fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
             1.0,
         ).determinant();
 
-        let Dz = Matrix4::new(
+        let dz = Matrix4::new(
             length_column[0],
             vertices[0][0],
             vertices[0][1],
@@ -123,7 +123,7 @@ fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
         ).determinant();
 
 
-        let center = [Dx/2.0/a, Dy/2.0/a, Dz/2.0/a];
+        let center = [dx/2.0/a, dy/2.0/a, dz/2.0/a];
         let radius = ((vertices[0][0] - center[0]) * (vertices[0][0] - center[0])
             + (vertices[0][1] - center[1]) * (vertices[0][1] - center[1])
             + (vertices[0][2] - center[2]) * (vertices[0][2] - center[2]))

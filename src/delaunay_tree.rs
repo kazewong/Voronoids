@@ -1,8 +1,8 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
 use kiddo::{KdTree, SquaredEuclidean};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::{collections::HashMap};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct DelaunayTree<const N: usize, const M: usize> {

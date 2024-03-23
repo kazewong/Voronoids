@@ -1,6 +1,5 @@
-use nalgebra::zero;
 use rayon::prelude::*;
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use crate::delaunay_tree::DelaunayTree;
 
@@ -36,10 +35,10 @@ pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>)
     queue
         .clone()
         .into_iter()
-        .for_each(|(id, vertex, neighbors)| {
+        .for_each(|(id, _, neighbors)| {
             for neighbor in neighbors {
                 if occupancy.contains_key(&neighbor) {
-                    let mut sites = occupancy.get_mut(&neighbor).unwrap();
+                    let sites = occupancy.get_mut(&neighbor).unwrap();
                     sites.push(id);
                 } else {
                     occupancy.insert(neighbor, vec![id]);
