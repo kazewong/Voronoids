@@ -32,16 +32,14 @@ pub fn make_queue<const N: usize, const M: usize>(
 pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>) -> Vec<usize> {
     //-> Vec<usize>{
     let mut occupancy: HashMap<usize, Vec<usize>> = HashMap::new();
-    queue
-        .clone()
-        .into_iter()
+    queue.into_iter()
         .for_each(|(id, _, neighbors)| {
             for neighbor in neighbors {
                 if occupancy.contains_key(&neighbor) {
                     let sites = occupancy.get_mut(&neighbor).unwrap();
-                    sites.push(id);
+                    sites.push(*id);
                 } else {
-                    occupancy.insert(neighbor, vec![id]);
+                    occupancy.insert(*neighbor, vec![*id]);
                 }
             }
         });

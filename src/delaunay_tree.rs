@@ -188,14 +188,14 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 .enumerate()
                 .filter(|(id, _)| placement[*id] == i)
                 .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
-            let updates = valid_batch
-                .par_iter()
-                .enumerate()
-                .map(|(id, vertex)| TreeUpdate::new(n_points+id, vertex.1.1, self))
-                .collect::<Vec<TreeUpdate<N, M>>>();
-            for update in updates {
-                self.insert_point(update);
-            }
+            // let updates = valid_batch
+            //     .par_iter()
+            //     .enumerate()
+            //     .map(|(id, vertex)| TreeUpdate::new(n_points+id, vertex.1.1, self))
+            //     .collect::<Vec<TreeUpdate<N, M>>>();
+            // for update in updates {
+            //     self.insert_point(update);
+            // }
         }
         println!("Insertion finished in {:?}", time.elapsed());
     }
