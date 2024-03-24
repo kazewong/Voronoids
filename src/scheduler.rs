@@ -16,8 +16,6 @@ pub fn make_queue<const N: usize, const M: usize>(
                 .into_iter()
                 .map(|site| tree.neighbors.get(&site).unwrap().clone())
                 .flatten()
-                .collect();
-            neighbors = neighbors
                 .into_iter()
                 .map(|site| tree.neighbors.get(&site).unwrap().clone())
                 .flatten()
