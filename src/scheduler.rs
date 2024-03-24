@@ -1,4 +1,4 @@
-use rayon::prelude::*;
+use rayon::{prelude::*, vec};
 use std::collections::HashMap;
 
 use crate::delaunay_tree::DelaunayTree;
@@ -44,10 +44,10 @@ pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>)
             }
         });
     let length = queue.len();
-    let mut placement: Vec<usize> = Vec::with_capacity(length);
+    let mut placement: Vec<usize> = vec![0; length];
     for i in 0..length {
         let mut max_distance = 0;
-        for neighbor in queue[i].2.clone() {
+        queue[i].2.iter().for_each(|neighbor| {
             let mut current_distance = 0;
             for site in occupancy.get(&neighbor).unwrap() {
                 if *site == i {
@@ -58,8 +58,8 @@ pub fn find_placement<const N:usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>)
                 }
             }
             max_distance = std::cmp::max(max_distance, current_distance);
-        }
-        placement.push(max_distance);
+        });
+        placement[i] = max_distance;
     }
     placement
 }
