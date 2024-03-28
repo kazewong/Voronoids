@@ -177,9 +177,11 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
+        #[cfg(debug_assertions)] println!("Making queue");
         let queue = make_queue(vertices, self);
+        #[cfg(debug_assertions)] println!("Finding placement");
         let placement = find_placement(&queue);
-        println!("Starting insertion");
+        #[cfg(debug_assertions)] println!("Starting insertion");
         let time = std::time::Instant::now();
         for i in 1..placement.iter().max().unwrap() + 1 {
             let n_points = self.vertices.len();
