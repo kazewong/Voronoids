@@ -35,7 +35,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         if output.len() == 0 {
             println!("{:?}", self.vertices_simplex);
             println!("Simplex_id {:?}", simplex_id);
-            println!("{:?}", self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize);
+            println!(
+                "{:?}",
+                self.kdtree.nearest_one::<SquaredEuclidean>(&vertex).item as usize
+            );
             panic!("No simplex found for vertex {:?}", vertex);
         }
         output.sort();
@@ -177,11 +180,14 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
-        #[cfg(debug_assertions)] println!("Making queue");
+        #[cfg(debug_assertions)]
+        println!("Making queue");
         let queue = make_queue(vertices, self);
-        #[cfg(debug_assertions)] println!("Finding placement");
+        #[cfg(debug_assertions)]
+        println!("Finding placement");
         let placement = find_placement(&queue);
-        #[cfg(debug_assertions)] println!("Starting insertion");
+        #[cfg(debug_assertions)]
+        println!("Starting insertion");
         let time = std::time::Instant::now();
         for i in 1..placement.iter().max().unwrap() + 1 {
             let n_points = self.vertices.len();
@@ -193,7 +199,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             let updates = valid_batch
                 .par_iter()
                 .enumerate()
-                .map(|(id, vertex)| TreeUpdate::new(n_points+id, vertex.1.1, self))
+                .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                 .collect::<Vec<TreeUpdate<N, M>>>();
             // for update in updates {
             //     self.insert_point(update);
@@ -201,7 +207,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
         println!("Insertion finished in {:?}", time.elapsed());
     }
-
 }
 
 impl DelaunayTree<3, 4> {
@@ -310,7 +315,7 @@ impl DelaunayTree<3, 4> {
                     result = false;
                     println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
                     println!("Vertices coordinates {:?}", vertex);
-                    for i in 0..4{
+                    for i in 0..4 {
                         println!("Simplex vertices {:?}", self.vertices[simplex[i]]);
                     }
                     println!("Center of simplex {:?}", self.centers.get(id).unwrap());
@@ -419,18 +424,16 @@ fn pair_simplices<const N: usize, const M: usize>(
     let mut new_neighbors: Vec<(usize, usize)> = vec![];
     let n_simplices = simplices.len();
     for i in 0..n_simplices {
-        for j in i..n_simplices {
-            if i != j {
-                let mut count = 0;
-                for k in 0..M {
-                    if simplices[i].contains(&simplices[j][k]) {
-                        count += 1;
-                    }
+        for j in (i + 1)..n_simplices {
+            let mut count = 0;
+            for k in 0..M {
+                if simplices[i].contains(&simplices[j][k]) {
+                    count += 1;
                 }
-                if count == N {
-                    new_neighbors.push((simplices_id[i], simplices_id[j]));
-                    new_neighbors.push((simplices_id[j], simplices_id[i]));
-                }
+            }
+            if count == N {
+                new_neighbors.push((simplices_id[i], simplices_id[j]));
+                new_neighbors.push((simplices_id[j], simplices_id[i]));
             }
         }
     }
@@ -450,14 +453,12 @@ pub struct TreeUpdate<const N: usize, const M: usize> {
 }
 
 impl<const N: usize, const M: usize> TreeUpdate<N, M> {
-    pub fn new(id:usize, vertex: [f64; N], tree: &DelaunayTree<N, M>) -> Self {
+    pub fn new(id: usize, vertex: [f64; N], tree: &DelaunayTree<N, M>) -> Self {
         let killed_sites = tree.locate(vertex);
         let mut simplices: Vec<[usize; M]> = vec![];
-        let mut simplices_id: Vec<usize> = vec![];
         let mut centers: Vec<[f64; N]> = vec![];
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
-
 
         for i in 0..killed_sites.len() {
             let (simplices_, centers_, radii_, neighbors_) =
@@ -466,10 +467,9 @@ impl<const N: usize, const M: usize> TreeUpdate<N, M> {
             centers.extend(centers_);
             radii.extend(radii_);
             neighbors.extend(neighbors_);
-            
         }
 
-        simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
+        let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
         let new_neighbors: Vec<(usize, usize)> = pair_simplices::<N, M>(&simplices, &simplices_id);
 
         TreeUpdate {

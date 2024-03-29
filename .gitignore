@@ -27,7 +27,6 @@ Manifest.toml
 # Added by cargo
 
 /target
-<<<<<<< HEAD
 test.png
-=======
->>>>>>> 211cf90 (I am fed up with Julia's multithreading)
+*perf*
+*.svg
