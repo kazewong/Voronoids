@@ -14,10 +14,10 @@ pub fn make_queue<const N: usize, const M: usize>(
             let killed_site = tree.locate(vertex);
             let mut neighbors: Vec<usize> = killed_site
                 .into_iter()
-                .map(|site| tree.neighbors.get(&site).unwrap().clone())
+                .map(|site| tree.simplices.get(&site).unwrap().neighbors.clone())
                 .flatten()
                 .into_iter()
-                .map(|site| tree.neighbors.get(&site).unwrap().clone())
+                .map(|site| tree.simplices.get(&site).unwrap().neighbors.clone())
                 .flatten()
                 .collect();
             neighbors.sort();

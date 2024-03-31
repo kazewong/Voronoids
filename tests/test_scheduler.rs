@@ -25,8 +25,9 @@ fn test_queuing() {
         vertices2.push(point2);
     }
     let mut delaunay_tree = DelaunayTree::<3, 4>::new(vertices.clone());
+    let n_points = delaunay_tree.vertices.len();
     for i in 0..N_POINTS {
-        let update = TreeUpdate::new(i, vertices[i], &delaunay_tree);
+        let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
         delaunay_tree.insert_point(update);
     }
 
