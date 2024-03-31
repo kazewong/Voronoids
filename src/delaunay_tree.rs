@@ -182,19 +182,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
-        #[cfg(debug_assertions)]
-        {
-            println!("Making queue");
-        }
         let queue = make_queue(vertices, self);
-        #[cfg(debug_assertions)]
-        {
-            println!("Finding placement");
-        }
         let placement = find_placement(&queue);
         #[cfg(debug_assertions)]
         {
-            println!("Starting insertion");
             let time = std::time::Instant::now();
             for i in 1..placement.iter().max().unwrap() + 1 {
                 let n_points = self.vertices.len();
@@ -206,10 +197,11 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 println!("Valid batch {:?}", valid_batch.len());
                 let updates = valid_batch
                     .par_iter()
+                    .enumerate()
                     // .with_min_len(4)
-                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1, self))
+                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1.1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
-                // self.insert_multiple_points(updates);
+                self.insert_multiple_points(updates);
             }
             println!("Insertion finished in {:?}", time.elapsed());
         }

@@ -5,7 +5,8 @@ use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
 
 fn main() {
     const N_POINTS: usize = 10000;
-    const N_TEST_POINTS: usize = 10000;
+    const N_TEST_POINTS: usize = 30000;
+    const BATCH_SIZE: usize = 128;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
@@ -31,9 +32,9 @@ fn main() {
         duration
     );
 
-    for i in 0..10 {
+    for i in 0..(N_TEST_POINTS / BATCH_SIZE) {
         let mut vertices2: Vec<[f64; 3]> = vec![];
-        for _ in 0..N_TEST_POINTS {
+        for _ in 0..BATCH_SIZE {
             let point = [
                 dist.sample(&mut rng),
                 dist.sample(&mut rng),
