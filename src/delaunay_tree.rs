@@ -203,14 +203,13 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     .enumerate()
                     .filter(|(id, _)| placement[*id] == i)
                     .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
+                println!("Valid batch {:?}", valid_batch.len());
                 let updates = valid_batch
                     .par_iter()
-                    .enumerate()
-                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
+                    // .with_min_len(4)
+                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
-                for update in updates {
-                    self.insert_point(update);
-                }
+                // self.insert_multiple_points(updates);
             }
             println!("Insertion finished in {:?}", time.elapsed());
         }
