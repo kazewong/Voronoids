@@ -1,4 +1,4 @@
-use nalgebra::Matrix4;
+use nalgebra::{Matrix3, Matrix4};
 fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
     let [x1, y1] = vertices[0];
     let [x2, y2] = vertices[1];
@@ -21,115 +21,149 @@ fn circumsphere_2d(vertices: [[f64; 2]; 3]) -> ([f64; 2], f64) {
     return ([x, y], r);
 }
 
+// fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
+//     if vertices[0] == vertices[1]
+//         || vertices[0] == vertices[2]
+//         || vertices[0] == vertices[3]
+//         || vertices[1] == vertices[2]
+//         || vertices[1] == vertices[3]
+//         || vertices[2] == vertices[3]
+//     {
+//         ([0.0, 0.0, 0.0], 0.0)
+//     } else {
+//         let length_column = [
+//             vertices[0][0] * vertices[0][0]
+//                 + vertices[0][1] * vertices[0][1]
+//                 + vertices[0][2] * vertices[0][2],
+//             vertices[1][0] * vertices[1][0]
+//                 + vertices[1][1] * vertices[1][1]
+//                 + vertices[1][2] * vertices[1][2],
+//             vertices[2][0] * vertices[2][0]
+//                 + vertices[2][1] * vertices[2][1]
+//                 + vertices[2][2] * vertices[2][2],
+//             vertices[3][0] * vertices[3][0]
+//                 + vertices[3][1] * vertices[3][1]
+//                 + vertices[3][2] * vertices[3][2],
+//         ];
+
+//         let a = Matrix4::new(
+//             vertices[0][0],
+//             vertices[0][1],
+//             vertices[0][2],
+//             1.0,
+//             vertices[1][0],
+//             vertices[1][1],
+//             vertices[1][2],
+//             1.0,
+//             vertices[2][0],
+//             vertices[2][1],
+//             vertices[2][2],
+//             1.0,
+//             vertices[3][0],
+//             vertices[3][1],
+//             vertices[3][2],
+//             1.0,
+//         ).determinant();
+
+//         let dx = Matrix4::new(
+//             length_column[0],
+//             vertices[0][1],
+//             vertices[0][2],
+//             1.0,
+//             length_column[1],
+//             vertices[1][1],
+//             vertices[1][2],
+//             1.0,
+//             length_column[2],
+//             vertices[2][1],
+//             vertices[2][2],
+//             1.0,
+//             length_column[3],
+//             vertices[3][1],
+//             vertices[3][2],
+//             1.0,
+//         ).determinant();
+
+//         let dy = - Matrix4::new(
+//             length_column[0],
+//             vertices[0][0],
+//             vertices[0][2],
+//             1.0,
+//             length_column[1],
+//             vertices[1][0],
+//             vertices[1][2],
+//             1.0,
+//             length_column[2],
+//             vertices[2][0],
+//             vertices[2][2],
+//             1.0,
+//             length_column[3],
+//             vertices[3][0],
+//             vertices[3][2],
+//             1.0,
+//         ).determinant();
+
+//         let dz = Matrix4::new(
+//             length_column[0],
+//             vertices[0][0],
+//             vertices[0][1],
+//             1.0,
+//             length_column[1],
+//             vertices[1][0],
+//             vertices[1][1],
+//             1.0,
+//             length_column[2],
+//             vertices[2][0],
+//             vertices[2][1],
+//             1.0,
+//             length_column[3],
+//             vertices[3][0],
+//             vertices[3][1],
+//             1.0,
+//         ).determinant();
+
+
+//         let center = [dx/2.0/a, dy/2.0/a, dz/2.0/a];
+//         let radius = ((vertices[0][0] - center[0]) * (vertices[0][0] - center[0])
+//             + (vertices[0][1] - center[1]) * (vertices[0][1] - center[1])
+//             + (vertices[0][2] - center[2]) * (vertices[0][2] - center[2]))
+//             .sqrt();
+//         (center, radius)
+//     }
+// }
+
 fn circumsphere_3d(vertices: [[f64; 3]; 4]) -> ([f64; 3], f64) {
-    if vertices[0] == vertices[1]
-        || vertices[0] == vertices[2]
-        || vertices[0] == vertices[3]
-        || vertices[1] == vertices[2]
-        || vertices[1] == vertices[3]
-        || vertices[2] == vertices[3]
-    {
-        ([0.0, 0.0, 0.0], 0.0)
-    } else {
-        let length_column = [
-            vertices[0][0] * vertices[0][0]
-                + vertices[0][1] * vertices[0][1]
-                + vertices[0][2] * vertices[0][2],
-            vertices[1][0] * vertices[1][0]
-                + vertices[1][1] * vertices[1][1]
-                + vertices[1][2] * vertices[1][2],
-            vertices[2][0] * vertices[2][0]
-                + vertices[2][1] * vertices[2][1]
-                + vertices[2][2] * vertices[2][2],
-            vertices[3][0] * vertices[3][0]
-                + vertices[3][1] * vertices[3][1]
-                + vertices[3][2] * vertices[3][2],
-        ];
 
-        let a = Matrix4::new(
-            vertices[0][0],
-            vertices[0][1],
-            vertices[0][2],
-            1.0,
-            vertices[1][0],
-            vertices[1][1],
-            vertices[1][2],
-            1.0,
-            vertices[2][0],
-            vertices[2][1],
-            vertices[2][2],
-            1.0,
-            vertices[3][0],
-            vertices[3][1],
-            vertices[3][2],
-            1.0,
-        ).determinant();
+    let direction = Matrix3::new(
+        vertices[1][0] - vertices[0][0],
+        vertices[1][1] - vertices[0][1],
+        vertices[1][2] - vertices[0][2],
+        vertices[2][0] - vertices[0][0],
+        vertices[2][1] - vertices[0][1],
+        vertices[2][2] - vertices[0][2],
+        vertices[3][0] - vertices[0][0],
+        vertices[3][1] - vertices[0][1],
+        vertices[3][2] - vertices[0][2],
+    );
+    let midpoint = Matrix3::new(
+        (vertices[1][0] + vertices[0][0]) / 2.0,
+        (vertices[1][1] + vertices[0][1]) / 2.0,
+        (vertices[1][2] + vertices[0][2]) / 2.0,
+        (vertices[2][0] + vertices[0][0]) / 2.0,
+        (vertices[2][1] + vertices[0][1]) / 2.0,
+        (vertices[2][2] + vertices[0][2]) / 2.0,
+        (vertices[3][0] + vertices[0][0]) / 2.0,
+        (vertices[3][1] + vertices[0][1]) / 2.0,
+        (vertices[3][2] + vertices[0][2]) / 2.0,
+    );
+    let planes = (direction.component_mul(&midpoint)).column_sum();
+    let center = <[f64; 3]>::from(direction.lu().solve(&planes).unwrap());
+    let radius = ((vertices[0][0] - center[0]) * (vertices[0][0] - center[0])
+        + (vertices[0][1] - center[1]) * (vertices[0][1] - center[1])
+        + (vertices[0][2] - center[2]) * (vertices[0][2] - center[2]))
+        .sqrt();
+    (center, radius)
 
-        let dx = Matrix4::new(
-            length_column[0],
-            vertices[0][1],
-            vertices[0][2],
-            1.0,
-            length_column[1],
-            vertices[1][1],
-            vertices[1][2],
-            1.0,
-            length_column[2],
-            vertices[2][1],
-            vertices[2][2],
-            1.0,
-            length_column[3],
-            vertices[3][1],
-            vertices[3][2],
-            1.0,
-        ).determinant();
-
-        let dy = - Matrix4::new(
-            length_column[0],
-            vertices[0][0],
-            vertices[0][2],
-            1.0,
-            length_column[1],
-            vertices[1][0],
-            vertices[1][2],
-            1.0,
-            length_column[2],
-            vertices[2][0],
-            vertices[2][2],
-            1.0,
-            length_column[3],
-            vertices[3][0],
-            vertices[3][2],
-            1.0,
-        ).determinant();
-
-        let dz = Matrix4::new(
-            length_column[0],
-            vertices[0][0],
-            vertices[0][1],
-            1.0,
-            length_column[1],
-            vertices[1][0],
-            vertices[1][1],
-            1.0,
-            length_column[2],
-            vertices[2][0],
-            vertices[2][1],
-            1.0,
-            length_column[3],
-            vertices[3][0],
-            vertices[3][1],
-            1.0,
-        ).determinant();
-
-
-        let center = [dx/2.0/a, dy/2.0/a, dz/2.0/a];
-        let radius = ((vertices[0][0] - center[0]) * (vertices[0][0] - center[0])
-            + (vertices[0][1] - center[1]) * (vertices[0][1] - center[1])
-            + (vertices[0][2] - center[2]) * (vertices[0][2] - center[2]))
-            .sqrt();
-        (center, radius)
-    }
 }
 
 pub fn circumsphere<const N: usize, const M: usize>(vertices: [[f64; N]; M]) -> ([f64; N], f64) {
@@ -162,6 +196,8 @@ pub fn circumsphere<const N: usize, const M: usize>(vertices: [[f64; N]; M]) -> 
     }
     (center, radius)
 }
+
+
 
 pub fn in_sphere<const N: usize>(vertex: [f64; N], center: [f64; N], radius: f64) -> bool {
     let mut distance: f64 = 0.0;
