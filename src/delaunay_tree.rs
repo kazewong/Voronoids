@@ -1,5 +1,6 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
+use core::time;
 use kiddo::{KdTree, SquaredEuclidean};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
@@ -174,33 +175,64 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         self.max_simplex_id += update.simplices.len();
     }
 
-    pub fn insert_multiple_points(&mut self, vertices: Vec<[f64; N]>) {
+    pub fn insert_multiple_points(&mut self, updates: Vec<TreeUpdate<N, M>>) {
+        for update in updates {
+            self.insert_point(update);
+        }
+    }
+
+    pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
         #[cfg(debug_assertions)]
-        println!("Making queue");
+        {
+            println!("Making queue");
+        }
         let queue = make_queue(vertices, self);
         #[cfg(debug_assertions)]
-        println!("Finding placement");
+        {
+            println!("Finding placement");
+        }
         let placement = find_placement(&queue);
         #[cfg(debug_assertions)]
-        println!("Starting insertion");
-        let time = std::time::Instant::now();
-        for i in 1..placement.iter().max().unwrap() + 1 {
-            let n_points = self.vertices.len();
-            let valid_batch = queue
-                .iter()
-                .enumerate()
-                .filter(|(id, _)| placement[*id] == i)
-                .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
-            let updates = valid_batch
-                .par_iter()
-                .enumerate()
-                .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
-                .collect::<Vec<TreeUpdate<N, M>>>();
-            for update in updates {
-                self.insert_point(update);
+        {
+            println!("Starting insertion");
+            let time = std::time::Instant::now();
+            for i in 1..placement.iter().max().unwrap() + 1 {
+                let n_points = self.vertices.len();
+                let valid_batch = queue
+                    .iter()
+                    .enumerate()
+                    .filter(|(id, _)| placement[*id] == i)
+                    .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
+                let updates = valid_batch
+                    .par_iter()
+                    .enumerate()
+                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
+                    .collect::<Vec<TreeUpdate<N, M>>>();
+                for update in updates {
+                    self.insert_point(update);
+                }
+            }
+            println!("Insertion finished in {:?}", time.elapsed());
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            for i in 1..placement.iter().max().unwrap() + 1 {
+                let n_points = self.vertices.len();
+                let valid_batch = queue
+                    .iter()
+                    .enumerate()
+                    .filter(|(id, _)| placement[*id] == i)
+                    .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
+                let updates = valid_batch
+                    .par_iter()
+                    .enumerate()
+                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
+                    .collect::<Vec<TreeUpdate<N, M>>>();
+                for update in updates {
+                    self.insert_point(update);
+                }
             }
         }
-        println!("Insertion finished in {:?}", time.elapsed());
     }
 }
 
