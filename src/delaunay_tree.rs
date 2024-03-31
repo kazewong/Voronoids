@@ -196,9 +196,9 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 .enumerate()
                 .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                 .collect::<Vec<TreeUpdate<N, M>>>();
-            // for update in updates {
-            //     self.insert_point(update);
-            // }
+            for update in updates {
+                self.insert_point(update);
+            }
         }
         println!("Insertion finished in {:?}", time.elapsed());
     }
@@ -320,22 +320,22 @@ impl DelaunayTree<3, 4> {
 
     pub fn check_delaunay(&self) -> bool {
         let mut result = true;
-        for (id, simplex) in self.simplices.iter() {
+        for (id, _simplex) in self.simplices.iter() {
             for (vertex_id, vertex) in self.vertices.iter().enumerate() {
-                let _simplex = self.simplices.get(&id).unwrap();
-                if in_sphere(*vertex, _simplex.center, _simplex.radius)
-                    && !_simplex.vertices.contains(&vertex_id)
-                    && _simplex.vertices.iter().all(|&x| x > 7)
+                let local_simplex = self.simplices.get(&id).unwrap();
+                if in_sphere(*vertex, local_simplex.center, local_simplex.radius)
+                    && !local_simplex.vertices.contains(&vertex_id)
+                    && local_simplex.vertices.iter().all(|&x| x > 7)
                 // TODO fix this
                 {
                     result = false;
                     println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
                     println!("Vertices coordinates {:?}", vertex);
                     for i in 0..4 {
-                        println!("Simplex vertices {:?}", _simplex.vertices[i]);
+                        println!("Simplex vertices {:?}", local_simplex.vertices[i]);
                     }
-                    println!("Center of simplex {:?}", _simplex.center);
-                    println!("Radius of simplex {:?}", _simplex.radius);
+                    println!("Center of simplex {:?}", local_simplex.center);
+                    println!("Radius of simplex {:?}", local_simplex.radius);
                 }
             }
         }
@@ -433,22 +433,22 @@ impl DelaunayTree<2, 3> {
 
     pub fn check_delaunay(&self) -> bool {
         let mut result = true;
-        for (id, simplex) in self.simplices.iter() {
+        for (id, _simplex) in self.simplices.iter() {
             for (vertex_id, vertex) in self.vertices.iter().enumerate() {
-                let _simplex = self.simplices.get(&id).unwrap();
-                if in_sphere(*vertex, _simplex.center, _simplex.radius)
-                    && !_simplex.vertices.contains(&vertex_id)
-                    && _simplex.vertices.iter().all(|&x| x > 5)
+                let local_simplex = self.simplices.get(&id).unwrap();
+                if in_sphere(*vertex, local_simplex.center, local_simplex.radius)
+                    && !local_simplex.vertices.contains(&vertex_id)
+                    && local_simplex.vertices.iter().all(|&x| x > 5)
                 // TODO fix this
                 {
                     result = false;
                     println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
                     println!("Vertices coordinates {:?}", vertex);
                     for i in 0..4 {
-                        println!("Simplex vertices {:?}", _simplex.vertices[i]);
+                        println!("Simplex vertices {:?}", local_simplex.vertices[i]);
                     }
-                    println!("Center of simplex {:?}", _simplex.center);
-                    println!("Radius of simplex {:?}", _simplex.radius);
+                    println!("Center of simplex {:?}", local_simplex.center);
+                    println!("Radius of simplex {:?}", local_simplex.radius);
                 }
             }
         }
