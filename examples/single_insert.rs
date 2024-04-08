@@ -25,5 +25,6 @@ fn main() {
         delaunay_tree.insert_point(update);
     }
     let duration = start.elapsed();
+    println!("Number of vertices in the initial tree: {}", delaunay_tree.vertices.len());
     println!("Time elapsed in constructing the initial tree is: {:?}", duration);
 }
