@@ -2,8 +2,8 @@ use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
 use kiddo::{KdTree, SquaredEuclidean};
 use rayon::iter::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
-    IntoParallelRefMutIterator, ParallelExtend, ParallelIterator,
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
+    ParallelIterator,
 };
 use std::collections::HashMap;
 
@@ -185,18 +185,25 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
         let queue = make_queue(vertices, self);
         let placement = find_placement(&queue);
+        let mut batches = vec![];
+        batches.par_extend(
+            (1..placement.iter().max().unwrap() + 1)
+                .into_par_iter()
+                .map(|i| {
+                    queue
+                        .iter()
+                        .enumerate()
+                        .filter(|(id, _)| placement[*id] == i)
+                        .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>()
+                }),
+        );
         #[cfg(debug_assertions)]
         {
             let time = std::time::Instant::now();
-            for i in 1..placement.iter().max().unwrap() + 1 {
+            for batch in batches {
                 let n_points = self.vertices.len();
-                let valid_batch = queue
-                    .iter()
-                    .enumerate()
-                    .filter(|(id, _)| placement[*id] == i)
-                    .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
-                println!("Valid batch {:?}", valid_batch.len());
-                let updates = valid_batch
+                println!("Valid batch {:?}", batch.len());
+                let updates = batch
                     .par_iter()
                     .enumerate()
                     // .with_min_len(8)
@@ -208,16 +215,12 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
         #[cfg(not(debug_assertions))]
         {
-            for i in 1..placement.iter().max().unwrap() + 1 {
+            for batch in batches {
                 let n_points = self.vertices.len();
-                let valid_batch = queue
-                    .iter()
-                    .enumerate()
-                    .filter(|(id, _)| placement[*id] == i)
-                    .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>();
-                let updates = valid_batch
+                let updates = batch
                     .par_iter()
                     .enumerate()
+                    // .with_min_len(16)
                     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
                 for update in updates {
