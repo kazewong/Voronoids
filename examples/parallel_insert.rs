@@ -5,7 +5,7 @@ use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
 
 fn main() {
     const N_POINTS: usize = 10000;
-    const N_TEST_POINTS: usize = 30000;
+    const N_TEST_POINTS: usize = 1000000;
     const BATCH_SIZE: usize = 128;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
@@ -24,7 +24,7 @@ fn main() {
     let start = Instant::now();
     for i in 0..N_POINTS {
         let update = TreeUpdate::new(n_points + i, vertices[i], &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
     }
     let duration = start.elapsed();
     println!(
@@ -42,17 +42,22 @@ fn main() {
             ];
             vertices2.push(point);
         }
-        let start = Instant::now();
-        println!("Starting insert_multiple_points()");
-        delaunay_tree.add_points_to_tree(vertices2);
-        let duration = start.elapsed();
-        println!(
-            "Time elapsed in insert_multiple_points() is: {:?}",
-            duration
-        );
-        println!(
-            "Number of vertices in the tree: {}",
-            delaunay_tree.vertices.len()
-        );
+        #[cfg(debug_assertions)]{
+            let start = Instant::now();
+            println!("Starting insert_multiple_points()");
+            delaunay_tree.add_points_to_tree(vertices2);
+            let duration = start.elapsed();
+            println!(
+                "Time elapsed in insert_multiple_points() is: {:?}",
+                duration
+            );
+            println!(
+                "Number of vertices in the tree: {}",
+                delaunay_tree.vertices.len()
+            );
+        }
+        #[cfg(not(debug_assertions))]{
+            delaunay_tree.add_points_to_tree(vertices2);
+        }
     }
 }

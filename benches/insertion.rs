@@ -21,7 +21,7 @@ fn benchmark_locate(c: &mut Criterion){
     let n_points = delaunay_tree.vertices.len();
     for i in 0..N_POINTS {
         let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
     }
     let new_vertex = [0.5, 0.5, 0.5];
     const N_TEST_POINTS: usize = 10000;
@@ -59,7 +59,7 @@ fn benchmark_geometry(c: &mut Criterion){
     let n_points = delaunay_tree.vertices.len();
     for i in 0..N_POINTS {
         let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
     }
     let new_vertex = [0.5, 0.5, 0.5];
     const N_TEST_POINTS: usize = 10000;

@@ -22,7 +22,7 @@ fn test_delaunay_tree_3d() {
 
     for i in 0..1000 {
         let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
     }
     delaunay_tree.check_delaunay();
 }
@@ -41,7 +41,7 @@ fn test_delaunay_tree_2d() {
         let start = Instant::now();
         let point = [dist.sample(&mut rng), dist.sample(&mut rng)];
         let update = TreeUpdate::new(n_points+i, point, &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
         let duration = start.elapsed();
         println!("Point {:?} inserted in {:?}", point, duration);
     }

@@ -1,8 +1,10 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
-use core::time;
 use kiddo::{KdTree, SquaredEuclidean};
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelExtend, ParallelIterator,
+};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -114,10 +116,9 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         (simplices, centers, radii, neighbors)
     }
 
-    pub fn insert_point(&mut self, update: TreeUpdate<N, M>) {
-        let mut killed_sites = update.killed_sites;
+    pub fn insert_point(&mut self, update: &TreeUpdate<N, M>) {
+        let killed_sites = &update.killed_sites;
         self.kdtree.add(&update.vertex, self.vertices.len() as u64);
-        killed_sites.sort();
         self.vertices.push(update.vertex);
 
         // Update simplices
@@ -176,9 +177,9 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn insert_multiple_points(&mut self, updates: Vec<TreeUpdate<N, M>>) {
-        for update in updates {
+        updates.iter().for_each(|update| {
             self.insert_point(update);
-        }
+        });
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
@@ -198,8 +199,8 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 let updates = valid_batch
                     .par_iter()
                     .enumerate()
-                    // .with_min_len(4)
-                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1.1, self))
+                    // .with_min_len(8)
+                    .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
                 self.insert_multiple_points(updates);
             }
@@ -220,7 +221,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
                 for update in updates {
-                    self.insert_point(update);
+                    self.insert_point(&update);
                 }
             }
         }

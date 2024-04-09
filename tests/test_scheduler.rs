@@ -28,7 +28,7 @@ fn test_queuing() {
     let n_points = delaunay_tree.vertices.len();
     for i in 0..N_POINTS {
         let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
     }
 
     let queue = voronoids::scheduler::make_queue(vertices2, &delaunay_tree);

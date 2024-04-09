@@ -22,7 +22,7 @@ fn main() {
     let start = Instant::now();
     for i in 0..N_POINTS {
         let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
-        delaunay_tree.insert_point(update);
+        delaunay_tree.insert_point(&update);
     }
     let duration = start.elapsed();
     println!("Number of vertices in the initial tree: {}", delaunay_tree.vertices.len());
