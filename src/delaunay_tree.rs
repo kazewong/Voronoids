@@ -218,11 +218,12 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 let updates = valid_batch
                     .par_iter()
                     .enumerate()
+                    .with_min_len(8)
                     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
-                for update in updates {
-                    self.insert_point(&update);
-                }
+                // for update in updates {
+                //     self.insert_point(&update);
+                // }
             }
         }
     }

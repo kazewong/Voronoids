@@ -5,8 +5,8 @@ use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
 
 fn main() {
     const N_POINTS: usize = 10000;
-    const N_TEST_POINTS: usize = 1000000;
-    const BATCH_SIZE: usize = 128;
+    const N_TEST_POINTS: usize = 10000;
+    const BATCH_SIZE: usize = 10000;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
@@ -31,21 +31,22 @@ fn main() {
         "Time elapsed in constructing the initial tree is: {:?}",
         duration
     );
-
+    println!("Generating test points");
+    let mut vertices2: Vec<[f64; 3]> = vec![];
+    for _ in 0..N_TEST_POINTS {
+        let point = [
+            dist.sample(&mut rng),
+            dist.sample(&mut rng),
+            dist.sample(&mut rng),
+        ];
+        vertices2.push(point);
+    }
+    println!("Start inserting test points");
     for i in 0..(N_TEST_POINTS / BATCH_SIZE) {
-        let mut vertices2: Vec<[f64; 3]> = vec![];
-        for _ in 0..BATCH_SIZE {
-            let point = [
-                dist.sample(&mut rng),
-                dist.sample(&mut rng),
-                dist.sample(&mut rng),
-            ];
-            vertices2.push(point);
-        }
         #[cfg(debug_assertions)]{
             let start = Instant::now();
             println!("Starting insert_multiple_points()");
-            delaunay_tree.add_points_to_tree(vertices2);
+            delaunay_tree.add_points_to_tree(vertices2[i * BATCH_SIZE..(i + 1) * BATCH_SIZE].to_vec());
             let duration = start.elapsed();
             println!(
                 "Time elapsed in insert_multiple_points() is: {:?}",
@@ -57,7 +58,7 @@ fn main() {
             );
         }
         #[cfg(not(debug_assertions))]{
-            delaunay_tree.add_points_to_tree(vertices2);
+            delaunay_tree.add_points_to_tree(vertices2[i * BATCH_SIZE..(i + 1) * BATCH_SIZE].to_vec());
         }
     }
 }
