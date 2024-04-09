@@ -28,7 +28,7 @@ fn benchmark_locate(c: &mut Criterion) {
         delaunay_tree.insert_point(&update);
     }
     let new_vertex = [0.5, 0.5, 0.5];
-    const N_TEST_POINTS: usize = 10000;
+    const N_TEST_POINTS: usize = 100000;
     let mut vertices2: Vec<[f64; 3]> = vec![];
     for _ in 0..N_TEST_POINTS {
         let point = [
