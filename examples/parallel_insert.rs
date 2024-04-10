@@ -7,8 +7,8 @@ use voronoids::scheduler::make_queue;
 
 fn main() {
     const N_POINTS: usize = 100000;
-    const N_TEST_POINTS: usize = 1000000;
-    const BATCH_SIZE: usize = 1000000;
+    const N_TEST_POINTS: usize = 3000000;
+    const BATCH_SIZE: usize = 3000000;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
@@ -44,14 +44,14 @@ fn main() {
         vertices2.push(point);
     }
     println!("Benchmarking update speed");
-    let start = Instant::now();
-    let queue = make_queue(vertices2.clone(), &delaunay_tree);
-    queue
-        .par_iter()
-        .enumerate()
-        .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1, &delaunay_tree))
-        .collect::<Vec<TreeUpdate<3, 4>>>();
-    let duration = start.elapsed();
+    // let start = Instant::now();
+    // let queue = make_queue(vertices2.clone(), &delaunay_tree);
+    // queue
+    //     .par_iter()
+    //     .enumerate()
+    //     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1, &delaunay_tree))
+    //     .collect::<Vec<TreeUpdate<3, 4>>>();
+    // let duration = start.elapsed();
     println!("Time elapsed in benchmarking update speed is: {:?}", duration);
     println!("Start inserting test points");
     for i in 0..(N_TEST_POINTS / BATCH_SIZE) {
