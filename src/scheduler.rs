@@ -28,7 +28,6 @@ pub fn make_queue<const N: usize, const M: usize>(
 }
 
 pub fn find_placement<const N: usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>) -> Vec<usize> {
-    //-> Vec<usize>{
     let mut occupancy: HashMap<usize, Vec<usize>> = HashMap::new();
     let mut placement: Vec<usize> = vec![0; queue.len()];
     queue.into_iter().for_each(|(id, _, neighbors)| {
@@ -51,24 +50,6 @@ pub fn find_placement<const N: usize>(queue: &Vec<(usize, [f64; N], Vec<usize>)>
             })
             .max()
             .unwrap()
-
-        // println!("placement[{}] = {}", id, placement[*id])
     });
-    // for i in 0..length {
-    //     let mut max_distance = 0;
-    //     queue[i].2.iter().for_each(|neighbor| {
-    //         let mut current_distance = 0;
-    //         for site in occupancy.get(&neighbor).unwrap() {
-    //             if *site == i {
-    //                 current_distance += 1;
-    //                 break;
-    //             }else{
-    //                 current_distance = std::cmp::max(current_distance, placement[*site]);
-    //             }
-    //         }
-    //         max_distance = std::cmp::max(max_distance, current_distance);
-    //     });
-    //     placement[i] = max_distance;
-    // }
     placement
 }
