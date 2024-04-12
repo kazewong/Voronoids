@@ -117,21 +117,25 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn insert_point(&mut self, update: &TreeUpdate<N, M>) {
+        // Insert one point in the tree
+        // This does not parallelize the insert so we don't have to pay for overhead.
+        // Works well for small number of points
         let killed_sites = &update.killed_sites;
         self.kdtree.add(&update.vertex, self.vertices.len() as u64);
         self.vertices.push(update.vertex);
 
         // Update simplices
-        for (i, simplex) in update.simplices.iter().enumerate() {
-            let current_id = self.max_simplex_id + update.simplices_id[i];
-            let _simplex = Simplex {
-                vertices: *simplex,
-                center: update.centers[i],
-                radius: update.radii[i],
-                neighbors: vec![update.neighbors[i].0],
-            };
-            self.simplices.insert(current_id, _simplex);
-        }
+        self.simplices
+            .extend(update.simplices.iter().enumerate().map(|(i, simplex)| {
+                let current_id = self.max_simplex_id + update.simplices_id[i];
+                let _simplex = Simplex {
+                    vertices: *simplex,
+                    center: update.centers[i],
+                    radius: update.radii[i],
+                    neighbors: vec![update.neighbors[i].0],
+                };
+                (current_id, _simplex)
+            }));
 
         // update neighbor relations
 
@@ -169,40 +173,67 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
 
         // Remove killed sites
-        self.simplices.retain(|key, _simplex| !killed_sites.contains(&key));
+        killed_sites.iter().for_each(|killed_sites_id| {
+            self.simplices.remove(killed_sites_id);
+        });
+
+        // self.simplices
+        //     .retain(|key, _simplex| !killed_sites.contains(&key));
 
         self.max_simplex_id += update.simplices.len();
     }
 
-    pub fn insert_multiple_points(&mut self, updates: &Vec<TreeUpdate<N, M>>) {
+    pub fn insert_points_parallel(&mut self, updates: &Vec<TreeUpdate<N, M>>) {
         let killed_sites = updates
-            .iter()
+            .par_iter()
             .map(|update| &update.killed_sites)
             .flatten()
             .collect::<Vec<&usize>>();
+        let simplices = updates
+            .par_iter()
+            .map(|update| &update.simplices)
+            .flatten()
+            .collect::<Vec<&[usize; M]>>();
+        let centers = updates
+            .par_iter()
+            .map(|update| &update.centers)
+            .flatten()
+            .collect::<Vec<&[f64; N]>>();
+        let radii = updates
+            .par_iter()
+            .map(|update| &update.radii)
+            .flatten()
+            .collect::<Vec<&f64>>();
+        let neighbors = updates
+            .par_iter()
+            .map(|update| &update.neighbors)
+            .flatten()
+            .collect::<Vec<&(usize, usize)>>();
+        let new_neighbors = updates
+            .par_iter()
+            .map(|update| &update.new_neighbors)
+            .flatten()
+            .collect::<Vec<&(usize, usize)>>();
+        let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
+
         for update in updates {
             self.kdtree.add(&update.vertex, self.vertices.len() as u64);
             self.vertices.push(update.vertex);
         }
 
         // Adding new simplices
-        let simplices = updates
-            .par_iter()
-            .map(|update| &update.simplices)
-            .flatten()
-            .collect::<Vec<&[usize; M]>>();
-        
-        
-        self.simplices.par_extend(simplices.into_par_iter().enumerate().map(|(i, simplex)| {
-            let current_id = self.max_simplex_id + updates[i].simplices_id[0];
-            let _simplex = Simplex {
-                vertices: *simplex,
-                center: updates[i].centers[0],
-                radius: updates[i].radii[0],
-                neighbors: vec![updates[i].neighbors[0].0],
-            };
-            (current_id, _simplex)
-        }));
+
+        self.simplices
+            .par_extend(simplices.into_par_iter().enumerate().map(|(i, simplex)| {
+                let current_id = self.max_simplex_id + simplices_id[i];
+                let _simplex = Simplex {
+                    vertices: *simplex,
+                    center: *centers[i],
+                    radius: *radii[i],
+                    neighbors: vec![neighbors[i].0],
+                };
+                (current_id, _simplex)
+            }));
 
         // Update neighbor relations
 
@@ -211,7 +242,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         //Remove killed sites
         self.simplices
             .retain(|key, _simplex| !killed_sites.contains(&key));
-
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
@@ -241,7 +271,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     // .with_min_len(8)
                     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
-                self.insert_multiple_points(&updates);
+                self.insert_points_parallel(&updates);
             }
             println!("Insertion finished in {:?}", time.elapsed());
         }
