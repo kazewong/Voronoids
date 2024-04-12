@@ -1,12 +1,11 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
-use dashmap::DashMap;
 use kiddo::{KdTree, SquaredEuclidean};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
     ParallelIterator,
 };
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Simplex<const N: usize, const M: usize> {
@@ -22,7 +21,7 @@ pub struct DelaunayTree<const N: usize, const M: usize> {
     pub kdtree: KdTree<f64, N>,
     pub vertices: Vec<[f64; N]>,
     pub vertices_simplex: Vec<Vec<usize>>,
-    pub simplices: DashMap<usize, Simplex<N, M>>,
+    pub simplices: HashMap<usize, Simplex<N, M>>,
     pub max_simplex_id: usize,
 }
 
@@ -86,11 +85,11 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
-        let _killed_simplex = &self.simplices.get(&killed_site_id).unwrap();
+        let _killed_simplex = &self.simplices[&killed_site_id];
 
         let killed_site: [usize; M] = _killed_simplex.vertices;
         for neighbor_id in _killed_simplex.neighbors.iter() {
-            let neighbor_simplex = &self.simplices.get(neighbor_id).unwrap();
+            let neighbor_simplex = &self.simplices[neighbor_id];
             if !in_sphere(vertex, neighbor_simplex.center, neighbor_simplex.radius) {
                 let mut new_simplex = [0; M];
                 new_simplex[0] = vertex_id;
@@ -137,8 +136,8 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         // update neighbor relations
 
         for (i, (neighbor_id, killed_id)) in update.neighbors.iter().enumerate() {
-            for j in 0..self.simplices(neighbor_id).unwrap().neighbors.len() {
-                if self.simplices(neighbor_id).unwrap().neighbors[j] == *killed_id {
+            for j in 0..self.simplices[neighbor_id].neighbors.len() {
+                if self.simplices[neighbor_id].neighbors[j] == *killed_id {
                     self.simplices.get_mut(neighbor_id).unwrap().neighbors[j] =
                         self.max_simplex_id + update.simplices_id[i];
                 }
@@ -164,7 +163,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
         for killed_site_id in killed_sites.iter() {
             for i in 0..M {
-                self.vertices_simplex[self.simplices(killed_site_id).unwrap().vertices[i]]
+                self.vertices_simplex[self.simplices[killed_site_id].vertices[i]]
                     .retain(|&x| x != *killed_site_id);
             }
         }
