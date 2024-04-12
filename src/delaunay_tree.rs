@@ -144,8 +144,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
             for j in 0..neighbor.neighbors.len() {
                 if neighbor.neighbors[j] == *killed_id {
-                    neighbor.neighbors[j] =
-                        self.max_simplex_id + update.simplices_id[i];
+                    neighbor.neighbors[j] = self.max_simplex_id + update.simplices_id[i];
                 }
             }
         }
@@ -239,21 +238,50 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
         // Update neighbor relations
 
+        neighbors
+            .par_iter()
+            .enumerate()
+            .for_each(|(i, (neighbor_id, killed_id))| {
+                let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
+                for j in 0..neighbor.neighbors.len() {
+                    if neighbor.neighbors[j] == *killed_id {
+                        neighbor.neighbors[j] = self.max_simplex_id + simplices_id[i];
+                    }
+                }
+            });
+
+        new_neighbors
+            .par_iter()
+            .for_each(|(new_neighbor_id1, new_neighbor_id2)| {
+                self.simplices
+                    .get_mut(&(self.max_simplex_id + *new_neighbor_id1))
+                    .unwrap()
+                    .neighbors
+                    .push(self.max_simplex_id + *new_neighbor_id2);
+            });
+
         // Update vertices_simplex
 
         self.vertices_simplex
             .par_extend((0..simplices.len()).into_par_iter().map(|_| vec![]));
 
-        // simplices.par_iter().enumerate().map(|(i, simplex)| {
-        //     for j in 0..M {
-        //         self.vertices_simplex[(*simplex)[j]]
-        //             .push(self.max_simplex_id + simplices_id[i]);
-        //     }
-        // });
+        simplices.iter().enumerate().for_each(|(i, simplex)| {
+            for j in 0..M {
+                self.vertices_simplex[(*simplex)[j]].push(self.max_simplex_id + simplices_id[i]);
+            }
+        });
+
+        killed_sites.iter().for_each(|killed_sites_id| {
+            for i in 0..M {
+                self.vertices_simplex[self.simplices.get(killed_sites_id).unwrap().vertices[i]]
+                    .retain(|&x| x != **killed_sites_id);
+            }
+        });
 
         //Remove killed sites
-        self.simplices
-            .retain(|key, _simplex| !killed_sites.contains(&key));
+        killed_sites.par_iter().for_each(|killed_sites_id| {
+            self.simplices.remove(killed_sites_id);
+        });
 
         self.max_simplex_id += simplices.len();
     }
@@ -299,9 +327,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     // .with_min_len(16)
                     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
-                // for update in updates {
-                //     self.insert_point(&update);
-                // }
+                self.insert_points_parallel(&updates);
             }
         }
     }
