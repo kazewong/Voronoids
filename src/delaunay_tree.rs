@@ -1,6 +1,8 @@
 use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
+use dashmap::DashMap;
 use kiddo::{KdTree, SquaredEuclidean};
+use rand::seq::index::sample;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
     ParallelIterator,
@@ -15,13 +17,12 @@ pub struct Simplex<const N: usize, const M: usize> {
     pub neighbors: Vec<usize>,
 }
 
-#[derive(Debug, Clone)]
 pub struct DelaunayTree<const N: usize, const M: usize> {
     // Make sure M = N + 1
     pub kdtree: KdTree<f64, N>,
     pub vertices: Vec<[f64; N]>,
     pub vertices_simplex: Vec<Vec<usize>>,
-    pub simplices: HashMap<usize, Simplex<N, M>>,
+    pub simplices: DashMap<usize, Simplex<N, M>>,
     pub max_simplex_id: usize,
 }
 
@@ -85,11 +86,11 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         let mut radii: Vec<f64> = vec![];
         let mut neighbors: Vec<(usize, usize)> = vec![];
 
-        let _killed_simplex = &self.simplices[&killed_site_id];
+        let _killed_simplex = &self.simplices.get(&killed_site_id).unwrap();
 
         let killed_site: [usize; M] = _killed_simplex.vertices;
         for neighbor_id in _killed_simplex.neighbors.iter() {
-            let neighbor_simplex = &self.simplices[neighbor_id];
+            let neighbor_simplex = &self.simplices.get(neighbor_id).unwrap();
             if !in_sphere(vertex, neighbor_simplex.center, neighbor_simplex.radius) {
                 let mut new_simplex = [0; M];
                 new_simplex[0] = vertex_id;
@@ -140,9 +141,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         // update neighbor relations
 
         for (i, (neighbor_id, killed_id)) in update.neighbors.iter().enumerate() {
-            for j in 0..self.simplices[neighbor_id].neighbors.len() {
-                if self.simplices[neighbor_id].neighbors[j] == *killed_id {
-                    self.simplices.get_mut(neighbor_id).unwrap().neighbors[j] =
+            let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
+            for j in 0..neighbor.neighbors.len() {
+                if neighbor.neighbors[j] == *killed_id {
+                    neighbor.neighbors[j] =
                         self.max_simplex_id + update.simplices_id[i];
                 }
             }
@@ -167,7 +169,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
         for killed_site_id in killed_sites.iter() {
             for i in 0..M {
-                self.vertices_simplex[self.simplices[killed_site_id].vertices[i]]
+                self.vertices_simplex[self.simplices.get(killed_site_id).unwrap().vertices[i]]
                     .retain(|&x| x != *killed_site_id);
             }
         }
@@ -224,10 +226,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         // Adding new simplices
 
         self.simplices
-            .par_extend(simplices.into_par_iter().enumerate().map(|(i, simplex)| {
+            .par_extend((0..simplices.len()).into_par_iter().map(|i| {
                 let current_id = self.max_simplex_id + simplices_id[i];
                 let _simplex = Simplex {
-                    vertices: *simplex,
+                    vertices: *simplices[i],
                     center: *centers[i],
                     radius: *radii[i],
                     neighbors: vec![neighbors[i].0],
@@ -239,9 +241,21 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
         // Update vertices_simplex
 
+        self.vertices_simplex
+            .par_extend((0..simplices.len()).into_par_iter().map(|_| vec![]));
+
+        // simplices.par_iter().enumerate().map(|(i, simplex)| {
+        //     for j in 0..M {
+        //         self.vertices_simplex[(*simplex)[j]]
+        //             .push(self.max_simplex_id + simplices_id[i]);
+        //     }
+        // });
+
         //Remove killed sites
         self.simplices
             .retain(|key, _simplex| !killed_sites.contains(&key));
+
+        self.max_simplex_id += simplices.len();
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
@@ -350,53 +364,52 @@ impl DelaunayTree<3, 4> {
         ]
         .to_vec();
 
-        let simplices = HashMap::from([
-            (
-                0,
-                Simplex {
-                    vertices: [0, 1, 2, 3],
-                    center,
-                    radius,
-                    neighbors: vec![1, 2, 3, 4],
-                },
-            ),
-            (
-                1,
-                Simplex {
-                    vertices: [4, 0, 1, 2],
-                    center: [0., 0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-            (
-                2,
-                Simplex {
-                    vertices: [5, 0, 2, 3],
-                    center: [0., 0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-            (
-                3,
-                Simplex {
-                    vertices: [6, 0, 3, 1],
-                    center: [0., 0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-            (
-                4,
-                Simplex {
-                    vertices: [7, 1, 2, 3],
-                    center: [0., 0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-        ]);
+        let simplices = DashMap::new();
+        simplices.insert(
+            0,
+            Simplex {
+                vertices: [0, 1, 2, 3],
+                center,
+                radius,
+                neighbors: vec![1, 2, 3, 4],
+            },
+        );
+        simplices.insert(
+            1,
+            Simplex {
+                vertices: [4, 0, 1, 2],
+                center: [0., 0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
+        simplices.insert(
+            2,
+            Simplex {
+                vertices: [5, 0, 2, 3],
+                center: [0., 0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
+        simplices.insert(
+            3,
+            Simplex {
+                vertices: [6, 0, 3, 1],
+                center: [0., 0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
+        simplices.insert(
+            4,
+            Simplex {
+                vertices: [7, 1, 2, 3],
+                center: [0., 0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
         let delaunay_tree = DelaunayTree {
             kdtree,
             vertices,
@@ -409,16 +422,20 @@ impl DelaunayTree<3, 4> {
 
     pub fn check_delaunay(&self) -> bool {
         let mut result = true;
-        for (id, _simplex) in self.simplices.iter() {
+        for simplex in self.simplices.iter() {
             for (vertex_id, vertex) in self.vertices.iter().enumerate() {
-                let local_simplex = self.simplices.get(&id).unwrap();
+                let local_simplex = self.simplices.get(simplex.key()).unwrap();
                 if in_sphere(*vertex, local_simplex.center, local_simplex.radius)
                     && !local_simplex.vertices.contains(&vertex_id)
                     && local_simplex.vertices.iter().all(|&x| x > 7)
                 // TODO fix this
                 {
                     result = false;
-                    println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
+                    println!(
+                        "Vertex {:?} is in sphere of simplex {:?}",
+                        vertex_id,
+                        simplex.key()
+                    );
                     println!("Vertices coordinates {:?}", vertex);
                     for i in 0..4 {
                         println!("Simplex vertices {:?}", local_simplex.vertices[i]);
@@ -472,44 +489,43 @@ impl DelaunayTree<2, 3> {
             vec![3],
         ]
         .to_vec();
-        let simplices = HashMap::from([
-            (
-                0,
-                Simplex {
-                    vertices: [0, 1, 2],
-                    center,
-                    radius,
-                    neighbors: vec![1, 2, 3],
-                },
-            ),
-            (
-                1,
-                Simplex {
-                    vertices: [3, 0, 1],
-                    center: [0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-            (
-                2,
-                Simplex {
-                    vertices: [4, 0, 2],
-                    center: [0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-            (
-                3,
-                Simplex {
-                    vertices: [5, 1, 2],
-                    center: [0., 0.],
-                    radius: 0.,
-                    neighbors: vec![0],
-                },
-            ),
-        ]);
+        let simplices = DashMap::new();
+        simplices.insert(
+            0,
+            Simplex {
+                vertices: [0, 1, 2],
+                center,
+                radius,
+                neighbors: vec![1, 2, 3],
+            },
+        );
+        simplices.insert(
+            1,
+            Simplex {
+                vertices: [3, 0, 1],
+                center: [0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
+        simplices.insert(
+            2,
+            Simplex {
+                vertices: [4, 0, 2],
+                center: [0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
+        simplices.insert(
+            3,
+            Simplex {
+                vertices: [5, 1, 2],
+                center: [0., 0.],
+                radius: 0.,
+                neighbors: vec![0],
+            },
+        );
         let delaunay_tree = DelaunayTree::<2, 3> {
             kdtree,
             vertices,
@@ -522,16 +538,20 @@ impl DelaunayTree<2, 3> {
 
     pub fn check_delaunay(&self) -> bool {
         let mut result = true;
-        for (id, _simplex) in self.simplices.iter() {
+        for simplex in self.simplices.iter() {
             for (vertex_id, vertex) in self.vertices.iter().enumerate() {
-                let local_simplex = self.simplices.get(&id).unwrap();
+                let local_simplex = self.simplices.get(simplex.key()).unwrap();
                 if in_sphere(*vertex, local_simplex.center, local_simplex.radius)
                     && !local_simplex.vertices.contains(&vertex_id)
                     && local_simplex.vertices.iter().all(|&x| x > 5)
                 // TODO fix this
                 {
                     result = false;
-                    println!("Vertex {:?} is in sphere of simplex {:?}", vertex_id, id);
+                    println!(
+                        "Vertex {:?} is in sphere of simplex {:?}",
+                        vertex_id,
+                        simplex.key()
+                    );
                     println!("Vertices coordinates {:?}", vertex);
                     for i in 0..4 {
                         println!("Simplex vertices {:?}", local_simplex.vertices[i]);
