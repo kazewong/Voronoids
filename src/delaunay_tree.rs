@@ -192,6 +192,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .flatten()
             .collect::<Vec<&[usize; M]>>();
         
+        
         self.simplices.par_extend(simplices.into_par_iter().enumerate().map(|(i, simplex)| {
             let current_id = self.max_simplex_id + updates[i].simplices_id[0];
             let _simplex = Simplex {
@@ -202,6 +203,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             };
             (current_id, _simplex)
         }));
+
+        // Update neighbor relations
+
+        // Update vertices_simplex
 
         //Remove killed sites
         self.simplices
