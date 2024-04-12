@@ -195,6 +195,14 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .map(|update| &update.simplices)
             .flatten()
             .collect::<Vec<&[usize; M]>>();
+        let mut simplices_length = updates
+            .iter()
+            .map(|update| update.simplices.len())
+            .collect::<Vec<usize>>();
+        simplices_length.iter_mut().fold(0, |acc, x| {
+            *x += acc;
+            *x
+        });
         let centers = updates
             .par_iter()
             .map(|update| &update.centers)
@@ -210,11 +218,13 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .map(|update| &update.neighbors)
             .flatten()
             .collect::<Vec<&(usize, usize)>>();
-        let new_neighbors = updates
-            .par_iter()
-            .map(|update| &update.new_neighbors)
+        let new_neighbors = (0..updates.len())
+            .into_par_iter()
+            .map(|i| 
+                updates[i].new_neighbors.iter().map(|(x, y)| (x + simplices_length[i], y + simplices_length[i])).collect::<Vec<(usize, usize)>>()
+            )
             .flatten()
-            .collect::<Vec<&(usize, usize)>>();
+            .collect::<Vec<(usize, usize)>>();
         let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
 
         for update in updates {
@@ -225,7 +235,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         // Adding new simplices
 
         self.simplices
-            .par_extend((0..simplices.len()).into_par_iter().map(|i| {
+            .extend((0..simplices.len()).into_iter().map(|i| {
                 let current_id = self.max_simplex_id + simplices_id[i];
                 let _simplex = Simplex {
                     vertices: *simplices[i],
@@ -239,7 +249,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         // Update neighbor relations
 
         neighbors
-            .par_iter()
+            .iter()
             .enumerate()
             .for_each(|(i, (neighbor_id, killed_id))| {
                 let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
@@ -251,7 +261,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             });
 
         new_neighbors
-            .par_iter()
+            .iter()
             .for_each(|(new_neighbor_id1, new_neighbor_id2)| {
                 self.simplices
                     .get_mut(&(self.max_simplex_id + *new_neighbor_id1))
@@ -263,7 +273,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         // Update vertices_simplex
 
         self.vertices_simplex
-            .par_extend((0..simplices.len()).into_par_iter().map(|_| vec![]));
+            .extend((0..simplices.len()).into_iter().map(|_| vec![]));
 
         simplices.iter().enumerate().for_each(|(i, simplex)| {
             for j in 0..M {
@@ -279,7 +289,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         });
 
         //Remove killed sites
-        killed_sites.par_iter().for_each(|killed_sites_id| {
+        killed_sites.iter().for_each(|killed_sites_id| {
             self.simplices.remove(killed_sites_id);
         });
 
