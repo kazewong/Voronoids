@@ -169,10 +169,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
 
         // Remove killed sites
-        killed_sites.iter().for_each(|killed_sites_id| {
-            self.simplices.remove(killed_sites_id);
-        })
-        ;
+        self.simplices.retain(|key, _simplex| !killed_sites.contains(&key));
 
         self.max_simplex_id += update.simplices.len();
     }
@@ -188,8 +185,28 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             self.vertices.push(update.vertex);
         }
 
+        // Adding new simplices
+        let simplices = updates
+            .par_iter()
+            .map(|update| &update.simplices)
+            .flatten()
+            .collect::<Vec<&[usize; M]>>();
+        
+        self.simplices.par_extend(simplices.into_par_iter().enumerate().map(|(i, simplex)| {
+            let current_id = self.max_simplex_id + updates[i].simplices_id[0];
+            let _simplex = Simplex {
+                vertices: *simplex,
+                center: updates[i].centers[0],
+                radius: updates[i].radii[0],
+                neighbors: vec![updates[i].neighbors[0].0],
+            };
+            (current_id, _simplex)
+        }));
+
         //Remove killed sites
-        self.simplices.retain(|key, _simplex| !killed_sites.contains(&key));
+        self.simplices
+            .retain(|key, _simplex| !killed_sites.contains(&key));
+
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
