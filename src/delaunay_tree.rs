@@ -169,17 +169,27 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         }
 
         // Remove killed sites
-        for killed_sites_id in killed_sites.iter() {
+        killed_sites.iter().for_each(|killed_sites_id| {
             self.simplices.remove(killed_sites_id);
-        }
+        })
+        ;
 
         self.max_simplex_id += update.simplices.len();
     }
 
-    pub fn insert_multiple_points(&mut self, updates: Vec<TreeUpdate<N, M>>) {
-        updates.iter().for_each(|update| {
-            self.insert_point(update);
-        });
+    pub fn insert_multiple_points(&mut self, updates: &Vec<TreeUpdate<N, M>>) {
+        let killed_sites = updates
+            .iter()
+            .map(|update| &update.killed_sites)
+            .flatten()
+            .collect::<Vec<&usize>>();
+        for update in updates {
+            self.kdtree.add(&update.vertex, self.vertices.len() as u64);
+            self.vertices.push(update.vertex);
+        }
+
+        //Remove killed sites
+        self.simplices.retain(|key, _simplex| !killed_sites.contains(&key));
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
@@ -209,7 +219,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     // .with_min_len(8)
                     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1 .1, self))
                     .collect::<Vec<TreeUpdate<N, M>>>();
-                self.insert_multiple_points(updates);
+                self.insert_multiple_points(&updates);
             }
             println!("Insertion finished in {:?}", time.elapsed());
         }
