@@ -297,10 +297,25 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             });
 
         updates.iter().enumerate().for_each(|(i, update)| {
-            let killed_sites = &update.killed_sites;
-            self.kdtree.add(&update.vertex, self.vertices.len() as u64);
+            self.kdtree
+                .add(&update.vertex, (self.vertices.len() + i) as u64);
+        });
 
-            // Update vertices_simplex
+        // updates.par_iter().enumerate().for_each(|(i, update)| {
+        //     self.vertices.insert(
+        //         self.vertices.len() + i,
+        //         Vertex {
+        //             coordinates: update.vertex,
+        //             simplex: vec![],
+        //         },
+        //     );
+        // });
+
+        updates.iter().enumerate().for_each(|(i, update)| {
+            let killed_sites = &update.killed_sites;
+            // self.kdtree.add(&update.vertex, self.vertices.len() as u64);
+
+            // // Update vertices_simplex
 
             self.vertices.insert(
                 self.vertices.len(),
@@ -334,25 +349,15 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 }
             });
 
-            // Remove killed sites
-            killed_sites.iter().for_each(|killed_sites_id| {
-                self.simplices.remove(killed_sites_id);
-            });
+            // // Remove killed sites
+            // killed_sites.iter().for_each(|killed_sites_id| {
+            //     self.simplices.remove(killed_sites_id);
+            // });
 
             self.max_simplex_id += update.simplices.len();
         });
 
         // // Update vertices_simplex
-
-        // updates.par_iter().enumerate().for_each(|(i, update)| {
-        //     self.vertices.insert(
-        //         self.vertices.len() + i,
-        //         Vertex {
-        //             coordinates: update.vertex,
-        //             simplex: vec![],
-        //         },
-        //     );
-        // });
 
         // simplices.par_iter().enumerate().for_each(|(i, simplex)| {
         //     for j in 0..M {
@@ -374,10 +379,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         //     }
         // });
 
-        // //Remove killed sites
-        // killed_sites.par_iter().for_each(|killed_sites_id| {
-        //     self.simplices.remove(killed_sites_id);
-        // });
+        //Remove killed sites
+        killed_sites.par_iter().for_each(|killed_sites_id| {
+            self.simplices.remove(killed_sites_id);
+        });
 
         // self.max_simplex_id += simplices.len();
     }
