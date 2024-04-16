@@ -178,32 +178,34 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             },
         );
 
-        for i in 0..update.simplices.len() {
-            for j in 0..M {
-                self.vertices
-                    .get_mut(&update.simplices[i][j])
-                    .unwrap()
-                    .simplex
-                    .push(self.max_simplex_id + update.simplices_id[i]);
-            }
-        }
-        for killed_site_id in killed_sites.iter() {
+        update
+            .simplices
+            .iter()
+            .enumerate()
+            .for_each(|(i, simplex)| {
+                for j in 0..M {
+                    self.vertices
+                        .get_mut(&(*simplex)[j])
+                        .unwrap()
+                        .simplex
+                        .push(self.max_simplex_id + update.simplices_id[i]);
+                }
+            });
+
+        killed_sites.iter().for_each(|killed_sites_id| {
             for i in 0..M {
                 self.vertices
-                    .get_mut(&self.simplices.get(killed_site_id).unwrap().vertices[i])
+                    .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
                     .unwrap()
                     .simplex
-                    .retain(|&x| x != *killed_site_id);
+                    .retain(|&x| x != *killed_sites_id);
             }
-        }
+        });
 
         // Remove killed sites
         killed_sites.iter().for_each(|killed_sites_id| {
             self.simplices.remove(killed_sites_id);
         });
-
-        // self.simplices
-        //     .retain(|key, _simplex| !killed_sites.contains(&key));
 
         self.max_simplex_id += update.simplices.len();
     }
