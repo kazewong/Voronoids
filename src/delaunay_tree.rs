@@ -258,9 +258,10 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .collect::<Vec<(usize, usize)>>();
         let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
 
-        for update in updates {
-            self.kdtree.add(&update.vertex, self.vertices.len() as u64);
-        }
+        updates.iter().enumerate().for_each(|(i, update)| {
+            self.kdtree
+                .add(&update.vertex, (self.vertices.len() + i) as u64);
+        });
 
         // Adding new simplices
 
@@ -302,9 +303,9 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
         // Update vertices_simplex
 
-        updates.par_iter().for_each(|update| {
+        updates.par_iter().enumerate().for_each(|(i, update)| {
             self.vertices.insert(
-                self.vertices.len(),
+                self.vertices.len() + i,
                 Vertex {
                     coordinates: update.vertex,
                     simplex: vec![],
@@ -384,7 +385,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 // for update in updates {
                 //     self.insert_point(&update);
                 // }
-                // self.insert_points_parallel(&updates);
+                self.insert_points_parallel(&updates);
             }
         }
     }
