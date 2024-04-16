@@ -301,29 +301,22 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 .add(&update.vertex, (self.vertices.len() + i) as u64);
         });
 
-        // updates.par_iter().enumerate().for_each(|(i, update)| {
-        //     self.vertices.insert(
-        //         self.vertices.len() + i,
-        //         Vertex {
-        //             coordinates: update.vertex,
-        //             simplex: vec![],
-        //         },
-        //     );
-        // });
+        let length = self.vertices.len();
 
-        updates.iter().enumerate().for_each(|(i, update)| {
-            let killed_sites = &update.killed_sites;
-            // self.kdtree.add(&update.vertex, self.vertices.len() as u64);
-
-            // // Update vertices_simplex
-
+        updates.par_iter().enumerate().for_each(|(i, update)| {
             self.vertices.insert(
-                self.vertices.len(),
+                length + i,
                 Vertex {
                     coordinates: update.vertex,
                     simplex: vec![],
                 },
             );
+        });
+
+        updates.iter().enumerate().for_each(|(i, update)| {
+            let killed_sites = &update.killed_sites;
+
+            // Update vertices_simplex
 
             update
                 .simplices
