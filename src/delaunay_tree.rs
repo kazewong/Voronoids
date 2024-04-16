@@ -300,7 +300,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             let killed_sites = &update.killed_sites;
             self.kdtree.add(&update.vertex, self.vertices.len() as u64);
 
-
             // Update vertices_simplex
 
             self.vertices.insert(
