@@ -258,11 +258,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .collect::<Vec<(usize, usize)>>();
         let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
 
-        updates.iter().enumerate().for_each(|(i, update)| {
-            self.kdtree
-                .add(&update.vertex, (self.vertices.len() + i) as u64);
-        });
-
         // Adding new simplices
 
         self.simplices
@@ -301,44 +296,91 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     .push(self.max_simplex_id + *new_neighbor_id2);
             });
 
-        // Update vertices_simplex
+        updates.iter().enumerate().for_each(|(i, update)| {
+            let killed_sites = &update.killed_sites;
+            self.kdtree.add(&update.vertex, self.vertices.len() as u64);
 
-        updates.par_iter().enumerate().for_each(|(i, update)| {
+
+            // Update vertices_simplex
+
             self.vertices.insert(
-                self.vertices.len() + i,
+                self.vertices.len(),
                 Vertex {
                     coordinates: update.vertex,
                     simplex: vec![],
                 },
             );
+
+            update
+                .simplices
+                .iter()
+                .enumerate()
+                .for_each(|(i, simplex)| {
+                    for j in 0..M {
+                        self.vertices
+                            .get_mut(&(*simplex)[j])
+                            .unwrap()
+                            .simplex
+                            .push(self.max_simplex_id + update.simplices_id[i]);
+                    }
+                });
+
+            killed_sites.iter().for_each(|killed_sites_id| {
+                for i in 0..M {
+                    self.vertices
+                        .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
+                        .unwrap()
+                        .simplex
+                        .retain(|&x| x != *killed_sites_id);
+                }
+            });
+
+            // Remove killed sites
+            killed_sites.iter().for_each(|killed_sites_id| {
+                self.simplices.remove(killed_sites_id);
+            });
+
+            self.max_simplex_id += update.simplices.len();
         });
 
-        simplices.par_iter().enumerate().for_each(|(i, simplex)| {
-            for j in 0..M {
-                self.vertices
-                    .get_mut(&(*simplex)[j])
-                    .unwrap()
-                    .simplex
-                    .push(self.max_simplex_id + simplices_id[i]);
-            }
-        });
+        // // Update vertices_simplex
 
-        killed_sites.par_iter().for_each(|killed_sites_id| {
-            for i in 0..M {
-                self.vertices
-                    .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
-                    .unwrap()
-                    .simplex
-                    .retain(|&x| x != **killed_sites_id);
-            }
-        });
+        // updates.par_iter().enumerate().for_each(|(i, update)| {
+        //     self.vertices.insert(
+        //         self.vertices.len() + i,
+        //         Vertex {
+        //             coordinates: update.vertex,
+        //             simplex: vec![],
+        //         },
+        //     );
+        // });
 
-        //Remove killed sites
-        killed_sites.par_iter().for_each(|killed_sites_id| {
-            self.simplices.remove(killed_sites_id);
-        });
+        // simplices.par_iter().enumerate().for_each(|(i, simplex)| {
+        //     for j in 0..M {
+        //         self.vertices
+        //             .get_mut(&(*simplex)[j])
+        //             .unwrap()
+        //             .simplex
+        //             .push(self.max_simplex_id + simplices_id[i]);
+        //     }
+        // });
 
-        self.max_simplex_id += simplices.len();
+        // killed_sites.par_iter().for_each(|killed_sites_id| {
+        //     for i in 0..M {
+        //         self.vertices
+        //             .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
+        //             .unwrap()
+        //             .simplex
+        //             .retain(|&x| x != **killed_sites_id);
+        //     }
+        // });
+
+        // //Remove killed sites
+        // killed_sites.par_iter().for_each(|killed_sites_id| {
+        //     self.simplices.remove(killed_sites_id);
+        // });
+
+        // self.max_simplex_id += simplices.len();
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
