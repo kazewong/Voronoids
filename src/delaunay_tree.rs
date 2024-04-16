@@ -332,19 +332,14 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     }
                 });
 
-            killed_sites.iter().for_each(|killed_sites_id| {
-                for i in 0..M {
-                    self.vertices
-                        .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
-                        .unwrap()
-                        .simplex
-                        .retain(|&x| x != *killed_sites_id);
-                }
-            });
-
-            // // Remove killed sites
             // killed_sites.iter().for_each(|killed_sites_id| {
-            //     self.simplices.remove(killed_sites_id);
+            //     for i in 0..M {
+            //         self.vertices
+            //             .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
+            //             .unwrap()
+            //             .simplex
+            //             .retain(|&x| x != *killed_sites_id);
+            //     }
             // });
 
             self.max_simplex_id += update.simplices.len();
@@ -362,15 +357,15 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
         //     }
         // });
 
-        // killed_sites.par_iter().for_each(|killed_sites_id| {
-        //     for i in 0..M {
-        //         self.vertices
-        //             .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
-        //             .unwrap()
-        //             .simplex
-        //             .retain(|&x| x != **killed_sites_id);
-        //     }
-        // });
+        killed_sites.par_iter().for_each(|killed_sites_id| {
+            for i in 0..M {
+                self.vertices
+                    .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
+                    .unwrap()
+                    .simplex
+                    .retain(|&x| x != **killed_sites_id);
+            }
+        });
 
         //Remove killed sites
         killed_sites.par_iter().for_each(|killed_sites_id| {
