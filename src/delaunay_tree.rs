@@ -2,7 +2,6 @@ use crate::geometry::{bounding_sphere, circumsphere, in_sphere};
 use crate::scheduler::{find_placement, make_queue};
 use dashmap::DashMap;
 use kiddo::{KdTree, SquaredEuclidean};
-use nalgebra::coordinates;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
     ParallelIterator,
@@ -145,22 +144,29 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
 
         // update neighbor relations
 
-        for (i, (neighbor_id, killed_id)) in update.neighbors.iter().enumerate() {
-            let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
-            for j in 0..neighbor.neighbors.len() {
-                if neighbor.neighbors[j] == *killed_id {
-                    neighbor.neighbors[j] = self.max_simplex_id + update.simplices_id[i];
+        update
+            .neighbors
+            .iter()
+            .enumerate()
+            .for_each(|(i, (neighbor_id, killed_id))| {
+                let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
+                for j in 0..neighbor.neighbors.len() {
+                    if neighbor.neighbors[j] == *killed_id {
+                        neighbor.neighbors[j] = self.max_simplex_id + update.simplices_id[i];
+                    }
                 }
-            }
-        }
+            });
 
-        for (new_neighbor_id1, new_neighbor_id2) in update.new_neighbors.iter() {
-            self.simplices
-                .get_mut(&(self.max_simplex_id + *new_neighbor_id1))
-                .unwrap()
-                .neighbors
-                .push(self.max_simplex_id + *new_neighbor_id2);
-        }
+        update
+            .new_neighbors
+            .iter()
+            .for_each(|(new_neighbor_id1, new_neighbor_id2)| {
+                self.simplices
+                    .get_mut(&(self.max_simplex_id + *new_neighbor_id1))
+                    .unwrap()
+                    .neighbors
+                    .push(self.max_simplex_id + *new_neighbor_id2);
+            });
 
         // Update vertices_simplex
 
@@ -171,6 +177,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 simplex: vec![],
             },
         );
+
         for i in 0..update.simplices.len() {
             for j in 0..M {
                 self.vertices
@@ -406,7 +413,6 @@ impl DelaunayTree<3, 4> {
             [center[0] + radius, center[1], center[2] - radius],
         ];
 
-
         let mut kdtree = KdTree::new();
 
         kdtree.add(&first_vertex, 0);
@@ -510,8 +516,11 @@ impl DelaunayTree<3, 4> {
         for simplex in self.simplices.iter() {
             for vertex in self.vertices.iter() {
                 let local_simplex = self.simplices.get(simplex.key()).unwrap();
-                if in_sphere(vertex.coordinates, local_simplex.center, local_simplex.radius)
-                    && !local_simplex.vertices.contains(&vertex.key())
+                if in_sphere(
+                    vertex.coordinates,
+                    local_simplex.center,
+                    local_simplex.radius,
+                ) && !local_simplex.vertices.contains(&vertex.key())
                     && local_simplex.vertices.iter().all(|&x| x > 7)
                 // TODO fix this
                 {
@@ -564,7 +573,6 @@ impl DelaunayTree<2, 3> {
         for i in 0..6 {
             kdtree.add(&vertices[i], i as u64);
         }
-
 
         let vertices_simplex = [
             vec![0, 1, 2],
@@ -638,8 +646,11 @@ impl DelaunayTree<2, 3> {
         for simplex in self.simplices.iter() {
             for vertex in self.vertices.iter() {
                 let local_simplex = self.simplices.get(simplex.key()).unwrap();
-                if in_sphere(vertex.coordinates, local_simplex.center, local_simplex.radius)
-                    && !local_simplex.vertices.contains(&vertex.key())
+                if in_sphere(
+                    vertex.coordinates,
+                    local_simplex.center,
+                    local_simplex.radius,
+                ) && !local_simplex.vertices.contains(&vertex.key())
                     && local_simplex.vertices.iter().all(|&x| x > 5)
                 // TODO fix this
                 {
