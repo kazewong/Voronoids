@@ -2,11 +2,13 @@ use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use std::time::Instant;
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
+use voronoids::scheduler::make_queue;
+use rayon::prelude::*;
 
 fn main() {
-    const N_POINTS: usize = 10000;
-    const N_TEST_POINTS: usize = 10000;
-    const BATCH_SIZE: usize = 10000;
+    const N_POINTS: usize = 100000;
+    const N_TEST_POINTS: usize = 1000000;
+    const BATCH_SIZE: usize = 1000000;
     let mut vertices = vec![];
     let mut rng = StdRng::seed_from_u64(0);
     let dist = Uniform::from(0.0..1.0);
@@ -41,7 +43,7 @@ fn main() {
         ];
         vertices2.push(point);
     }
-    println!("Benchmarking update speed");
+    // println!("Benchmarking update speed");
     // let start = Instant::now();
     // let queue = make_queue(vertices2.clone(), &delaunay_tree);
     // queue
@@ -50,7 +52,7 @@ fn main() {
     //     .map(|(id, vertex)| TreeUpdate::new(n_points + id, vertex.1, &delaunay_tree))
     //     .collect::<Vec<TreeUpdate<3, 4>>>();
     // let duration = start.elapsed();
-    println!("Time elapsed in benchmarking update speed is: {:?}", duration);
+    // println!("Time elapsed in benchmarking update speed is: {:?}", duration);
     println!("Start inserting test points");
     let start = Instant::now();
     for i in 0..(N_TEST_POINTS / BATCH_SIZE) {

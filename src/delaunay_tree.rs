@@ -384,7 +384,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                 // for update in updates {
                 //     self.insert_point(&update);
                 // }
-                // self.insert_points_parallel(&updates);
+                self.insert_points_parallel(&updates);
             }
         }
     }
