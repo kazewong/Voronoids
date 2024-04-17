@@ -258,6 +258,12 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .collect::<Vec<(usize, usize)>>();
         let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
 
+        let length = self.vertices.len();
+        updates.iter().enumerate().for_each(|(i, update)| {
+            self.kdtree
+                .add(&update.vertex, (self.vertices.len() + i) as u64);
+        });
+
         // Adding new simplices
 
         self.simplices
@@ -296,12 +302,8 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     .push(self.max_simplex_id + *new_neighbor_id2);
             });
 
-        updates.iter().enumerate().for_each(|(i, update)| {
-            self.kdtree
-                .add(&update.vertex, (self.vertices.len() + i) as u64);
-        });
 
-        let length = self.vertices.len();
+
 
         updates.par_iter().enumerate().for_each(|(i, update)| {
             self.vertices.insert(
@@ -333,12 +335,11 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                     .simplex
                     .retain(|&x| x != **killed_sites_id);
             }
+            //Remove killed sites
+            self.simplices.remove(killed_sites_id);
+
         });
 
-        //Remove killed sites
-        killed_sites.par_iter().for_each(|killed_sites_id| {
-            self.simplices.remove(killed_sites_id);
-        });
 
         self.max_simplex_id += simplices.len();
     }
