@@ -20,10 +20,20 @@ fn test_delaunay_tree_3d() {
     assert_eq!(delaunay_tree.max_simplex_id, 4);
     let n_points = delaunay_tree.vertices.len();
 
-    for i in 0..1000 {
+    for i in 0..100 {
         let update = TreeUpdate::new(n_points+i, vertices[i], &delaunay_tree);
         delaunay_tree.insert_point(&update);
     }
+    let mut vertices2: Vec<[f64; 3]> = vec![];
+    for _ in 0..1000 {
+        let point = [
+            dist.sample(&mut rng),
+            dist.sample(&mut rng),
+            dist.sample(&mut rng),
+        ];
+        vertices2.push(point);
+    }
+    delaunay_tree.add_points_to_tree(vertices2);
     delaunay_tree.check_delaunay();
 }
 
