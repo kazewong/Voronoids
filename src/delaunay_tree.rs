@@ -211,6 +211,25 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn insert_points_parallel(&mut self, updates: &Vec<TreeUpdate<N, M>>) {
+        let mut simplices_length: Vec<usize> = vec![];
+        simplices_length.par_extend(
+            updates
+                .par_iter()
+                .map(|update| update.simplices.len())
+                .collect::<Vec<usize>>(),
+        );
+        simplices_length.iter_mut().fold(0, |acc, x| {
+            *x += acc;
+            *x
+        });
+        simplices_length.insert(0, 0);
+        let simplices_id = (1..simplices_length.last().unwrap() + 1).collect::<Vec<usize>>();
+        let length = self.vertices.len();
+
+        updates.iter().enumerate().for_each(|(i, update)| {
+            self.kdtree
+                .add(&update.vertex, (self.vertices.len() + i) as u64);
+        });
         let killed_sites = updates
             .par_iter()
             .map(|update| &update.killed_sites)
@@ -221,15 +240,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             .map(|update| &update.simplices)
             .flatten()
             .collect::<Vec<&[usize; M]>>();
-        let mut simplices_length = updates
-            .iter()
-            .map(|update| update.simplices.len())
-            .collect::<Vec<usize>>();
-        simplices_length.iter_mut().fold(0, |acc, x| {
-            *x += acc;
-            *x
-        });
-        simplices_length.insert(0, 0);
+
         let centers = updates
             .par_iter()
             .map(|update| &update.centers)
@@ -256,14 +267,6 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             })
             .flatten()
             .collect::<Vec<(usize, usize)>>();
-        let simplices_id = (1..simplices.len() + 1).collect::<Vec<usize>>();
-
-        let length = self.vertices.len();
-
-        updates.iter().enumerate().for_each(|(i, update)| {
-            self.kdtree
-                .add(&update.vertex, (self.vertices.len() + i) as u64);
-        });
 
         // Adding new simplices
 
@@ -313,7 +316,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             );
         });
 
-        // // Update vertices_simplex
+        // Update vertices_simplex
 
         simplices.par_iter().enumerate().for_each(|(i, simplex)| {
             for j in 0..M {
