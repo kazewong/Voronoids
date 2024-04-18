@@ -334,6 +334,8 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
+        println!("Making queue and finding placement");
+        let start = std::time::Instant::now();
         let queue = make_queue(vertices, self);
         let placement = find_placement(&queue);
         let mut batches = vec![];
@@ -348,6 +350,7 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
                         .collect::<Vec<(usize, &(usize, [f64; N], Vec<usize>))>>()
                 }),
         );
+        println!("Queue and placement finished in {:?}", start.elapsed());
         #[cfg(debug_assertions)]
         {
             let time = std::time::Instant::now();
