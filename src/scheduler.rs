@@ -1,4 +1,4 @@
-use rayon::{prelude::*, vec};
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 use crate::delaunay_tree::DelaunayTree;
