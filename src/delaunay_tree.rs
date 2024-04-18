@@ -223,124 +223,114 @@ impl<const N: usize, const M: usize> DelaunayTree<N, M> {
             *x
         });
         simplices_length.insert(0, 0);
-        let simplices_id = (1..simplices_length.last().unwrap() + 1).collect::<Vec<usize>>();
         let length = self.vertices.len();
 
         updates.iter().enumerate().for_each(|(i, update)| {
             self.kdtree
                 .add(&update.vertex, (self.vertices.len() + i) as u64);
         });
-        let killed_sites = updates
-            .par_iter()
-            .map(|update| &update.killed_sites)
-            .flatten()
-            .collect::<Vec<&usize>>();
-        let simplices = updates
-            .par_iter()
-            .map(|update| &update.simplices)
-            .flatten()
-            .collect::<Vec<&[usize; M]>>();
 
-        let centers = updates
-            .par_iter()
-            .map(|update| &update.centers)
-            .flatten()
-            .collect::<Vec<&[f64; N]>>();
-        let radii = updates
-            .par_iter()
-            .map(|update| &update.radii)
-            .flatten()
-            .collect::<Vec<&f64>>();
-        let neighbors = updates
-            .par_iter()
-            .map(|update| &update.neighbors)
-            .flatten()
-            .collect::<Vec<&(usize, usize)>>();
-        let new_neighbors = (0..updates.len())
-            .into_par_iter()
-            .map(|i| {
-                updates[i]
-                    .new_neighbors
-                    .iter()
-                    .map(|(x, y)| (x + simplices_length[i], y + simplices_length[i]))
-                    .collect::<Vec<(usize, usize)>>()
-            })
-            .flatten()
-            .collect::<Vec<(usize, usize)>>();
-
-        // Adding new simplices
-
-        self.simplices
-            .par_extend((0..simplices.len()).into_par_iter().map(|i| {
-                let current_id = self.max_simplex_id + simplices_id[i];
-                let _simplex = Simplex {
-                    vertices: *simplices[i],
-                    center: *centers[i],
-                    radius: *radii[i],
-                    neighbors: vec![neighbors[i].0],
-                };
-                (current_id, _simplex)
-            }));
-
-        // Update neighbor relations
-
-        neighbors
+        updates
             .par_iter()
             .enumerate()
-            .for_each(|(i, (neighbor_id, killed_id))| {
-                let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
-                for j in 0..neighbor.neighbors.len() {
-                    if neighbor.neighbors[j] == *killed_id {
-                        neighbor.neighbors[j] = self.max_simplex_id + simplices_id[i];
-                    }
-                }
-            });
+            .for_each(|(update_index, update)| {
+                let killed_sites = &update.killed_sites;
 
-        new_neighbors
-            .par_iter()
-            .for_each(|(new_neighbor_id1, new_neighbor_id2)| {
-                self.simplices
-                    .get_mut(&(self.max_simplex_id + *new_neighbor_id1))
-                    .unwrap()
+                // Update simplices
+                update
+                    .simplices
+                    .par_iter()
+                    .enumerate()
+                    .for_each(|(i, simplex)| {
+                        let current_id = self.max_simplex_id
+                            + update.simplices_id[i]
+                            + simplices_length[update_index];
+                        let _simplex = Simplex {
+                            vertices: *simplex,
+                            center: update.centers[i],
+                            radius: update.radii[i],
+                            neighbors: vec![update.neighbors[i].0],
+                        };
+                        self.simplices.insert(current_id, _simplex);
+                    });
+
+                // update neighbor relations
+
+                update
                     .neighbors
-                    .push(self.max_simplex_id + *new_neighbor_id2);
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, (neighbor_id, killed_id))| {
+                        let mut neighbor = self.simplices.get_mut(neighbor_id).unwrap();
+                        for j in 0..neighbor.neighbors.len() {
+                            if neighbor.neighbors[j] == *killed_id {
+                                neighbor.neighbors[j] = self.max_simplex_id
+                                    + update.simplices_id[i]
+                                    + simplices_length[update_index];
+                            }
+                        }
+                    });
+
+                update
+                    .new_neighbors
+                    .iter()
+                    .for_each(|(new_neighbor_id1, new_neighbor_id2)| {
+                        self.simplices
+                            .get_mut(
+                                &(self.max_simplex_id
+                                    + *new_neighbor_id1
+                                    + simplices_length[update_index]),
+                            )
+                            .unwrap()
+                            .neighbors
+                            .push(
+                                self.max_simplex_id
+                                    + *new_neighbor_id2
+                                    + simplices_length[update_index],
+                            );
+                    });
+
+                // Update vertices_simplex
+
+                self.vertices.insert(
+                    length + update_index,
+                    Vertex {
+                        coordinates: update.vertex,
+                        simplex: vec![],
+                    },
+                );
+
+                update
+                    .simplices
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, simplex)| {
+                        for j in 0..M {
+                            self.vertices
+                                .get_mut(&(*simplex)[j])
+                                .unwrap()
+                                .simplex
+                                .push(self.max_simplex_id + update.simplices_id[i] + simplices_length[update_index]);
+                        }
+                    });
+
+                killed_sites.iter().for_each(|killed_sites_id| {
+                    for i in 0..M {
+                        self.vertices
+                            .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
+                            .unwrap()
+                            .simplex
+                            .retain(|&x| x != *killed_sites_id);
+                    }
+                });
+
+                // Remove killed sites
+                killed_sites.iter().for_each(|killed_sites_id| {
+                    self.simplices.remove(killed_sites_id);
+                });
             });
 
-        updates.par_iter().enumerate().for_each(|(i, update)| {
-            self.vertices.insert(
-                length + i,
-                Vertex {
-                    coordinates: update.vertex,
-                    simplex: vec![],
-                },
-            );
-        });
-
-        // Update vertices_simplex
-
-        simplices.par_iter().enumerate().for_each(|(i, simplex)| {
-            for j in 0..M {
-                self.vertices
-                    .get_mut(&(*simplex)[j])
-                    .unwrap()
-                    .simplex
-                    .push(self.max_simplex_id + simplices_id[i]);
-            }
-        });
-
-        killed_sites.par_iter().for_each(|killed_sites_id| {
-            for i in 0..M {
-                self.vertices
-                    .get_mut(&self.simplices.get(killed_sites_id).unwrap().vertices[i])
-                    .unwrap()
-                    .simplex
-                    .retain(|&x| x != **killed_sites_id);
-            }
-            //Remove killed sites
-            self.simplices.remove(killed_sites_id);
-        });
-
-        self.max_simplex_id += simplices.len();
+        self.max_simplex_id += simplices_length.last().unwrap();
     }
 
     pub fn add_points_to_tree(&mut self, vertices: Vec<[f64; N]>) {
