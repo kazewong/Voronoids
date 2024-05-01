@@ -35,4 +35,4 @@ debug = true
 [lib]
 name = "voronoids"
 
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]

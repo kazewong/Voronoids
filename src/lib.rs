@@ -6,8 +6,8 @@ pub mod scheduler;
 
 use std::collections::HashMap;
 
-use delaunay_tree::{DelaunayTree, Vertex};
-use pyo3::{ffi::PyObject, prelude::*, types::PyDict};
+use delaunay_tree::{DelaunayTree};
+use pyo3::prelude::*;
 
 #[pyclass]
 struct PyVertex {
