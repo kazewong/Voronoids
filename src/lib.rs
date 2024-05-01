@@ -109,7 +109,7 @@ fn delaunay(points: Vec<[f64; 3]>) -> PyDelauanyTree {
 }
 
 #[pymodule]
-fn voronoids(_py: Python, m: &PyModule) -> PyResult<()> {
+fn voronoids(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyVertex>()?;
     m.add_class::<PySimplex>()?;
     m.add_class::<PyDelauanyTree>()?;
