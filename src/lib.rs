@@ -6,11 +6,25 @@ pub mod scheduler;
 
 use dashmap::DashMap;
 use delaunay_tree::{DelaunayTree, Vertex};
-use pyo3::prelude::*;
+use pyo3::{ffi::PyObject, prelude::*, types::PyDict};
 
 #[pyclass]
 struct PyDelauanyTree {
     tree: DelaunayTree<3, 4>,
+}
+
+#[pyclass]
+struct PyVertex {
+    point: [f64; 3],
+    neighbors: Vec<usize>,
+}
+
+#[pyclass]
+struct PySimplex {
+    vertices: [usize; 4],
+    center: [f64; 3],
+    radius: f64,
+    neighbors: Vec<usize>,
 }
 
 #[pymethods]
@@ -19,6 +33,7 @@ impl PyDelauanyTree{
     fn max_simplex_id(&self) -> usize {
         self.tree.max_simplex_id
     }
+
 }
 
 #[pyfunction]
