@@ -2,8 +2,6 @@ use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use std::time::Instant;
 use voronoids::delaunay_tree::{DelaunayTree, TreeUpdate};
-use voronoids::scheduler::make_queue;
-use rayon::prelude::*;
 
 fn main() {
     const N_POINTS: usize = 100000;
