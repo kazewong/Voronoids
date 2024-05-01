@@ -36,6 +36,28 @@ struct PySimplex {
     neighbors: Vec<usize>,
 }
 
+#[pymethods]
+impl PySimplex {
+    #[getter]
+    fn vertices(&self) -> [usize; 4] {
+        self.vertices
+    }
+
+    #[getter]
+    fn center(&self) -> [f64; 3] {
+        self.center
+    }
+
+    #[getter]
+    fn radius(&self) -> f64 {
+        self.radius
+    }
+
+    #[getter]
+    fn neighbors(&self) -> Vec<usize> {
+        self.neighbors.clone()
+    }
+}
 
 #[pyclass]
 struct PyDelauanyTree {
@@ -61,8 +83,23 @@ impl PyDelauanyTree {
             )
         }))
     }
-}
 
+    #[getter]
+    fn simplices(&self) -> HashMap<usize, PySimplex> {
+        HashMap::from_iter(self.tree.simplices.iter().map(|id| {
+            let simplex = &self.tree.simplices.get(id.key()).unwrap();
+            (
+                id.key().clone(),
+                PySimplex {
+                    vertices: simplex.vertices,
+                    center: simplex.center,
+                    radius: simplex.radius,
+                    neighbors: simplex.neighbors.clone(),
+                },
+            )
+        }))
+    }
+}
 
 #[pyfunction]
 fn delaunay(points: Vec<[f64; 3]>) -> PyDelauanyTree {
