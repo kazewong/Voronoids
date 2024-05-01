@@ -18,3 +18,9 @@ fn delaunay(points: Vec<[f64; 3]>)-> PyDelauanyTree {
         tree: DelaunayTree::<3, 4>::new(points),
     }
 }
+
+#[pymodule]
+fn voronoids(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(delaunay, m)?)?;
+    Ok(())
+}

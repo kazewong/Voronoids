@@ -31,3 +31,8 @@ harness = false
 
 [profile.bench]
 debug = true
+
+[lib]
+name = "voronoids"
+
+crate-type = ["cdylib"]
