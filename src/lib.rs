@@ -6,7 +6,7 @@ pub mod scheduler;
 
 use std::collections::HashMap;
 
-use delaunay_tree::{DelaunayTree};
+use delaunay_tree::{DelaunayTree, TreeUpdate};
 use pyo3::prelude::*;
 
 #[pyclass]
@@ -103,8 +103,24 @@ impl PyDelauanyTree {
 
 #[pyfunction]
 fn delaunay(points: Vec<[f64; 3]>) -> PyDelauanyTree {
+    let mut delaunay_tree = DelaunayTree::<3, 4>::new(points.clone());
+    let n_points = delaunay_tree.vertices.len();
+    if points.len() > 1e5 as usize {
+        println!("More than 1e5 points, using parallel insert");
+        for i in 0..1e5 as usize {
+            let update = TreeUpdate::new(n_points+i, points[i], &delaunay_tree);
+            delaunay_tree.insert_point(&update);
+        }
+        delaunay_tree.add_points_to_tree(points[1e5 as usize..].to_vec());
+    } else {
+        println!("Less than 1e5 points, using sequential insert");
+        for i in 0..points.len() {
+            let update = TreeUpdate::new(n_points+i, points[i], &delaunay_tree);
+            delaunay_tree.insert_point(&update);
+        }
+    }
     PyDelauanyTree {
-        tree: DelaunayTree::<3, 4>::new(points),
+        tree: delaunay_tree,
     }
 }
 

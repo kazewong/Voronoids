@@ -36,3 +36,11 @@ debug = true
 name = "voronoids"
 
 crate-type = ["cdylib", "rlib"]
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
+
+[tool.maturin]
+profile = "release"
+opt-level = 3
